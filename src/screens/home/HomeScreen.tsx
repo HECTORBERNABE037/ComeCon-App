@@ -200,9 +200,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         </ScrollView>
       )}
-
-      {/* IMPORTANTE: Se eliminó <ClientBottomNavBar /> */}
-
     </View>
   );
 };

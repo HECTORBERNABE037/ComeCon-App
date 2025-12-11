@@ -1,367 +1,218 @@
-// import React, { useState } from 'react';
-// import { 
-//   View, 
-//   Text, 
-//   StyleSheet, 
-//   SafeAreaView, 
-//   Image, 
-//   ScrollView, 
-//   TouchableOpacity, 
-//   StatusBar,
-//   Platform,
-//   Alert
-// } from 'react-native';
-// import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
-// import { StackScreenProps } from '@react-navigation/stack';
-// import { COLORS, FONT_SIZES, CartItem, PaymentMethod,RootStackParamList } from '../../../types';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, StatusBar, Alert, ActivityIndicator
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { StackScreenProps } from '@react-navigation/stack';
+import { useFocusEffect } from '@react-navigation/native';
+import { COLORS, FONT_SIZES, RootStackParamList, CartItem } from '../../../types';
+import DatabaseService from '../../services/DatabaseService';
+import { useAuth } from '../../context/AuthContext';
 
-// // Simulamos que recibimos los ítems del carrito
-// const cartItems: CartItem[] = [
-//   { 
-//     id: '1', 
-//     title: 'Cafe Panda', 
-//     subtitle: 'Latte', 
-//     price: '110.00', 
-//     image: require('../../../assets/cafePanda.png'), 
-//     quantity: 1
-//   },
-//   { 
-//     id: '2', 
-//     title: 'Bowl con Frutas', 
-//     subtitle: 'Fresa, Kiwi, Avena', 
-//     price: '120.99', 
-//     image: require('../../../assets/bowlFrutas.png'), 
-//     quantity: 1
-//   }
-// ];
+type Props = StackScreenProps<RootStackParamList, 'Checkout'>;
 
-// type Props = StackScreenProps<RootStackParamList, 'Checkout'>;
-
-// export const CheckoutScreen: React.FC<Props> = ({ navigation }) => {
+export const CheckoutScreen: React.FC<Props> = ({ navigation }) => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   
-//   const [selectedPayment, setSelectedPayment] = useState<PaymentMethod>('cash');
+  // Estado para tarjetas y selección
+  const [savedCards, setSavedCards] = useState<any[]>([]);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string>('cash'); // 'cash' o el ID de la tarjeta
 
-//   // Cálculos
-//   const subtotal = cartItems.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-//   const serviceFee = 40;
-//   const total = subtotal + serviceFee;
+  // Cargar datos (Carrito + Tarjetas)
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadData = async () => {
+        if (user) {
+          const items = await DatabaseService.getCartItems(Number(user.id));
+          setCartItems(items);
+          
+          const cards = await DatabaseService.getCards(Number(user.id));
+          setSavedCards(cards);
+        }
+      };
+      loadData();
+    }, [user])
+  );
 
-//   const handleOrder = () => {
-//     Alert.alert(
-//       "¡Orden Recibida!", 
-//       "Tu pedido ha sido enviado al restaurante.",
-//       [{ text: "OK", onPress: () => navigation.navigate('ClientOrderTracking') }]
-//     );
-//   };
+  const subtotal = cartItems.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
+  const shipping = 20.00;
+  const total = subtotal + shipping;
 
-//   const handleAddCard = () => {
-//     navigation.navigate('AddCard');
-//   };
+  const handleDeleteCard = (cardId: number) => {
+    Alert.alert("Eliminar", "¿Borrar esta tarjeta?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Sí", onPress: async () => {
+          await DatabaseService.deleteCard(cardId);
+          // Recargar tarjetas manualmente
+          const cards = await DatabaseService.getCards(Number(user?.id));
+          setSavedCards(cards);
+          if(selectedPaymentId === cardId.toString()) setSelectedPaymentId('cash');
+      }}
+    ]);
+  };
 
-//   return (
-//     <SafeAreaView style={styles.container}>
-//       <StatusBar barStyle="dark-content" backgroundColor="#F2F2F2" />
+  const handlePay = async () => {
+    if (!user) return;
+    setLoading(true);
+
+    try {
+      // Determinamos el texto del pago
+      let paymentDetails = 'Pago en Efectivo';
+      if (selectedPaymentId !== 'cash') {
+        const card = savedCards.find(c => c.id.toString() === selectedPaymentId);
+        paymentDetails = card ? `Tarjeta ${card.type} terminada en ${card.lastFour}` : 'Tarjeta';
+      }
       
-//       {/* Header Estilo Tarjeta */}
-//       <View style={styles.headerCard}>
-//         <View style={styles.headerContent}>
-//           <TouchableOpacity onPress={() => navigation.goBack()}>
-//             <Ionicons name="arrow-back" size={28} color={COLORS.text} />
-//           </TouchableOpacity>
-          
-//           <Text style={styles.headerTitle}>Pago</Text>
-          
-//           <View>
-//             <Feather name="shopping-cart" size={28} color={COLORS.text} />
-//             <View style={styles.cartBadge}>
-//               <Text style={styles.cartBadgeText}>{cartItems.length}</Text>
-//             </View>
-//           </View>
-//         </View>
-//       </View>
+      const success = await DatabaseService.createOrderFromCart(Number(user.id), total, paymentDetails);
 
-//       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      if (success) {
+        Alert.alert("¡Pedido Realizado!", "Tu orden ha sido enviada a cocina.", [
+          { 
+            text: "Ver Estado", 
+            onPress: () => navigation.navigate('ClientTabsNavigator', { screen: 'ClientOrderTrackingTab' } as any)
+          } 
+        ]);
+      } else {
+        Alert.alert("Error", "No se pudo procesar el pedido.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Ocurrió un problema de conexión.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F2F2F2" />
+      
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={28} color={COLORS.text} /></TouchableOpacity>
+        <Text style={styles.headerTitle}>Resumen</Text>
+        <View style={{ width: 28 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content}>
         
-//         <Text style={styles.sectionTitle}>Resumen de orden</Text>
+        {/* Dirección */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Dirección de entrega</Text>
+          <View style={styles.row}>
+            <Ionicons name="location-outline" size={24} color={COLORS.primary} />
+            <Text style={styles.addressText}>{user?.address || "Sin dirección registrada"}</Text>
+          </View>
+        </View>
 
-//         {/* Lista de Productos (Compacta en tarjeta blanca) */}
-//         <View style={styles.itemsCard}>
-//           {cartItems.map((item, index) => (
-//             <View key={item.id}>
-//               <View style={styles.itemRow}>
-//                 <Image source={item.image} style={styles.itemImage} />
-//                 <View style={styles.itemInfo}>
-//                   <Text style={styles.itemTitle}>{item.title}</Text>
-//                   <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
-//                   <Text style={styles.itemPrice}>${item.price}</Text>
-//                 </View>
-//               </View>
-//               {/* Separador entre items, menos el último */}
-//               {index < cartItems.length - 1 && <View style={styles.separator} />}
-//             </View>
-//           ))}
-//         </View>
-
-//         {/* Desglose de Costos */}
-//         <View style={styles.costsContainer}>
-//           <View style={styles.costRow}>
-//             <Text style={styles.costLabel}>Productos:</Text>
-//             <Text style={styles.costValue}>{cartItems.length}</Text>
-//           </View>
-//           <View style={styles.costRow}>
-//             <Text style={styles.costLabel}>Subtotal</Text>
-//             <Text style={styles.costValue}>${subtotal.toFixed(2)}</Text>
-//           </View>
-//           <View style={styles.costRow}>
-//             <Text style={styles.costLabel}>Servicio</Text>
-//             <Text style={styles.costValue}>${serviceFee}</Text>
-//           </View>
-//           <View style={[styles.costRow, { marginTop: 5 }]}>
-//             <Text style={styles.totalLabel}>Total</Text>
-//             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
-//           </View>
-//         </View>
-
-//         {/* Métodos de Pago */}
-//         <View style={styles.paymentMethodsContainer}>
+        {/* Método de Pago */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Método de Pago</Text>
           
-//           {/* Opción Efectivo */}
-//           <TouchableOpacity 
-//             style={[styles.paymentOption, selectedPayment === 'cash' && styles.selectedOption]}
-//             onPress={() => setSelectedPayment('cash')}
-//           >
-//             <View style={styles.paymentIconContainer}>
-//                <Ionicons name="cash-outline" size={24} color={COLORS.text} />
-//             </View>
-//             <Text style={styles.paymentText}>Efectivo</Text>
-//             {selectedPayment === 'cash' && <Ionicons name="checkmark" size={24} color={COLORS.text} />}
-//           </TouchableOpacity>
+          {/* 1. Lista de Tarjetas Guardadas */}
+          {savedCards.map((card) => (
+            <TouchableOpacity 
+              key={card.id}
+              style={[styles.paymentOption, selectedPaymentId === card.id.toString() && styles.activeOption]}
+              onPress={() => setSelectedPaymentId(card.id.toString())}
+            >
+              <View style={{flexDirection:'row', alignItems:'center', flex:1}}>
+                <Ionicons name="card" size={24} color={COLORS.text} />
+                <View style={{marginLeft: 10}}>
+                  <Text style={styles.optionText}>{card.type} •••• {card.lastFour}</Text>
+                  <Text style={{fontSize:10, color:'#888'}}>{card.holderName}</Text>
+                </View>
+              </View>
+              
+              <View style={{flexDirection:'row', alignItems:'center'}}>
+                {selectedPaymentId === card.id.toString() && <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} style={{marginRight:10}}/>}
+                <TouchableOpacity onPress={() => handleDeleteCard(card.id)}>
+                  <Ionicons name="trash-outline" size={20} color="#D50000" />
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          ))}
 
-//           <View style={styles.separator} />
+          {/* 2. Opción Agregar Tarjeta (Solo si hay espacio < 3) */}
+          {savedCards.length < 3 && (
+            <TouchableOpacity style={styles.addCardButton} onPress={() => navigation.navigate('AddCard')}>
+              <Ionicons name="add-circle-outline" size={24} color={COLORS.primary} />
+              <Text style={{marginLeft: 10, color: COLORS.primary, fontWeight:'600'}}>Nueva Tarjeta</Text>
+            </TouchableOpacity>
+          )}
 
-//           {/* Opción Tarjeta (Simulada) */}
-//           <TouchableOpacity 
-//             style={[styles.paymentOption, selectedPayment === 'card' && styles.selectedOption]}
-//             onPress={() => setSelectedPayment('card')}
-//           >
-//             <View style={[styles.paymentIconContainer, { backgroundColor: '#007AFF' }]}>
-//                <Ionicons name="card-outline" size={24} color="white" />
-//             </View>
-//             <View style={styles.cardTextContainer}>
-//                 <Text style={styles.paymentText}>CLIENTE1</Text>
-//                 <Text style={styles.cardNumber}>.... 9820</Text>
-//             </View>
-//             {selectedPayment === 'card' && <Ionicons name="checkmark" size={24} color={COLORS.text} />}
-//           </TouchableOpacity>
+          <View style={styles.divider} />
 
-//           <View style={styles.separator} />
+          {/* 3. Opción Efectivo */}
+          <TouchableOpacity 
+            style={[styles.paymentOption, selectedPaymentId === 'cash' && styles.activeOption]}
+            onPress={() => setSelectedPaymentId('cash')}
+          >
+            <View style={{flexDirection:'row', alignItems:'center'}}>
+              <Ionicons name="cash-outline" size={24} color={COLORS.text} />
+              <Text style={styles.optionText}>Efectivo</Text>
+            </View>
+            {selectedPaymentId === 'cash' && <Ionicons name="checkmark-circle" size={24} color={COLORS.primary} />}
+          </TouchableOpacity>
+        </View>
 
-//           {/* Agregar Tarjeta */}
-//           <TouchableOpacity style={styles.addCardButton} onPress={handleAddCard}>
-//             <Ionicons name="add" size={24} color={COLORS.text} />
-//             <Text style={styles.addCardText}>Agregar Tarjeta</Text>
-//           </TouchableOpacity>
+        {/* Resumen Productos */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Productos ({cartItems.length})</Text>
+          {cartItems.map((item, index) => (
+            <View key={index} style={styles.miniItemRow}>
+              <Text style={styles.miniQty}>{item.quantity}x</Text>
+              <Text style={styles.miniTitle}>{item.title}</Text>
+              <Text style={styles.miniPrice}>${(parseFloat(item.price) * item.quantity).toFixed(2)}</Text>
+            </View>
+          ))}
+        </View>
 
-//         </View>
+      </ScrollView>
 
-//         {/* Botón Ordenar */}
-//         <TouchableOpacity style={styles.orderButton} onPress={handleOrder}>
-//           <Text style={styles.orderButtonText}>Ordernar</Text>
-//         </TouchableOpacity>
+      {/* Footer */}
+      <View style={styles.footer}>
+        <View style={styles.calcRow}><Text style={styles.calcLabel}>Subtotal</Text><Text style={styles.calcValue}>${subtotal.toFixed(2)}</Text></View>
+        <View style={styles.calcRow}><Text style={styles.calcLabel}>Envío</Text><Text style={styles.calcValue}>${shipping.toFixed(2)}</Text></View>
+        <View style={styles.divider} />
+        <View style={styles.totalRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>${total.toFixed(2)}</Text></View>
 
-//       </ScrollView>
-//     </SafeAreaView>
-//   );
-// };
+        <TouchableOpacity style={[styles.payButton, loading && {opacity: 0.7}]} onPress={handlePay} disabled={loading}>
+          {loading ? <ActivityIndicator color="white"/> : <Text style={styles.payText}>CONFIRMAR PEDIDO</Text>}
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+};
 
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: '#F2F2F2',
-//   },
-//   headerCard: {
-//     backgroundColor: COLORS.white,
-//     paddingTop: Platform.OS === 'android' ? 40 : 20,
-//     paddingBottom: 20,
-//     borderBottomLeftRadius: 30,
-//     borderBottomRightRadius: 30,
-//     elevation: 5,
-//     zIndex: 10,
-//   },
-//   headerContent: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     alignItems: 'center',
-//     paddingHorizontal: 25,
-//   },
-//   headerTitle: {
-//     fontSize: 24,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//   },
-//   cartBadge: {
-//     position: 'absolute',
-//     top: -5,
-//     right: -5,
-//     backgroundColor: '#F57C00',
-//     width: 18,
-//     height: 18,
-//     borderRadius: 9,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     borderWidth: 1.5,
-//     borderColor: COLORS.white,
-//   },
-//   cartBadgeText: {
-//     color: COLORS.white,
-//     fontSize: 10,
-//     fontWeight: 'bold',
-//   },
-//   scrollContent: {
-//     paddingHorizontal: 25,
-//     paddingTop: 20,
-//     paddingBottom: 40,
-//   },
-//   sectionTitle: {
-//     fontSize: FONT_SIZES.xlarge,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//     marginBottom: 15,
-//   },
-//   // Tarjeta de Items
-//   itemsCard: {
-//     backgroundColor: COLORS.white,
-//     borderRadius: 20,
-//     padding: 20,
-//     marginBottom: 20,
-//     elevation: 2,
-//   },
-//   itemRow: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//   },
-//   itemImage: {
-//     width: 70,
-//     height: 70,
-//     borderRadius: 35,
-//     marginRight: 15,
-//   },
-//   itemInfo: {
-//     flex: 1,
-//   },
-//   itemTitle: {
-//     fontSize: FONT_SIZES.medium,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//   },
-//   itemSubtitle: {
-//     fontSize: FONT_SIZES.small,
-//     color: COLORS.textSecondary,
-//   },
-//   itemPrice: {
-//     fontSize: FONT_SIZES.medium,
-//     fontWeight: 'bold',
-//     color: '#F57C00',
-//     marginTop: 2,
-//   },
-//   separator: {
-//     height: 1,
-//     backgroundColor: '#E0E0E0',
-//     marginVertical: 15,
-//     width: '100%',
-//   },
-//   // Costos
-//   costsContainer: {
-//     marginBottom: 25,
-//   },
-//   costRow: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     marginBottom: 5,
-//   },
-//   costLabel: {
-//     fontSize: FONT_SIZES.medium,
-//     color: COLORS.text,
-//     fontWeight: '500',
-//   },
-//   costValue: {
-//     fontSize: FONT_SIZES.medium,
-//     color: COLORS.text,
-//     fontWeight: 'bold',
-//   },
-//   totalLabel: {
-//     fontSize: FONT_SIZES.large,
-//     color: COLORS.text,
-//     fontWeight: 'bold',
-//   },
-//   totalValue: {
-//     fontSize: FONT_SIZES.large,
-//     color: COLORS.text,
-//     fontWeight: 'bold',
-//   },
-//   // Métodos de Pago
-//   paymentMethodsContainer: {
-//     marginBottom: 30,
-//   },
-//   paymentOption: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     paddingVertical: 10,
-//     paddingHorizontal: 10,
-//     borderRadius: 10,
-//   },
-//   selectedOption: {
-//     backgroundColor: '#EAEAEA', // Highlight sutil
-//   },
-//   paymentIconContainer: {
-//     width: 40,
-//     height: 30,
-//     backgroundColor: '#A5D6A7', // Verde claro para efectivo
-//     borderRadius: 5,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     marginRight: 15,
-//   },
-//   paymentText: {
-//     fontSize: FONT_SIZES.medium,
-//     color: COLORS.text,
-//     fontWeight: '500',
-//     flex: 1,
-//   },
-//   cardTextContainer: {
-//     flex: 1,
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//   },
-//   cardNumber: {
-//     fontSize: FONT_SIZES.medium,
-//     color: COLORS.text,
-//     marginLeft: 10,
-//   },
-//   addCardButton: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     paddingVertical: 10,
-//     paddingHorizontal: 10,
-//   },
-//   addCardText: {
-//     fontSize: FONT_SIZES.medium,
-//     color: COLORS.text,
-//     marginLeft: 15,
-//     fontWeight: '500',
-//   },
-//   // Botón Ordenar
-//   orderButton: {
-//     backgroundColor: COLORS.primary,
-//     height: 55,
-//     borderRadius: 25,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     elevation: 3,
-//   },
-//   orderButtonText: {
-//     color: COLORS.white,
-//     fontSize: FONT_SIZES.large,
-//     fontWeight: 'bold',
-//   }
-// });
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F2F2F2' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
+  headerTitle: { fontSize: FONT_SIZES.large, fontWeight: 'bold' },
+  content: { paddingHorizontal: 20, paddingBottom: 220 },
+  sectionCard: { backgroundColor: COLORS.white, borderRadius: 15, padding: 15, marginBottom: 15 },
+  sectionTitle: { fontSize: FONT_SIZES.medium, fontWeight: 'bold', marginBottom: 10, color: COLORS.text },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  addressText: { marginLeft: 10, color: '#666', flex: 1 },
+  
+  paymentOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  activeOption: { backgroundColor: '#FFF3E0', borderRadius: 10, paddingHorizontal: 5, borderBottomWidth: 0 },
+  optionText: { marginLeft: 10, fontSize: 14, color: COLORS.text, fontWeight: '500' },
+  addCardButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+
+  miniItemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  miniQty: { fontWeight: 'bold', color: COLORS.primary, width: 30 },
+  miniTitle: { flex: 1, color: '#555' },
+  miniPrice: { fontWeight: 'bold', color: '#333' },
+
+  footer: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: COLORS.white, padding: 20, borderTopLeftRadius: 25, borderTopRightRadius: 25, elevation: 15 },
+  calcRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  calcLabel: { color: '#888' },
+  calcValue: { color: '#333', fontWeight: '500' },
+  divider: { height: 1, backgroundColor: '#EEE', marginVertical: 10 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  totalLabel: { fontSize: 18, fontWeight: 'bold' },
+  totalValue: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary },
+  payButton: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 12, alignItems: 'center' },
+  payText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
+});

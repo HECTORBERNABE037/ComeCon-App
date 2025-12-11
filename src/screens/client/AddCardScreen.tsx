@@ -1,132 +1,120 @@
 import React, { useState } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  TextInput, 
-  TouchableOpacity, 
-  StatusBar,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Alert
+  View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, StatusBar, Alert, KeyboardAvoidingView, Platform, ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StackScreenProps } from '@react-navigation/stack';
-import { COLORS, FONT_SIZES, CardFormData,RootStackParamList } from '../../../types';
-import { useForm } from '../../hooks/useForm';
-import { validateCardForm } from '../../utils/validationRules';
+import { COLORS, FONT_SIZES, RootStackParamList, CardFormData } from '../../../types';
+import DatabaseService from '../../services/DatabaseService';
+import { useAuth } from '../../context/AuthContext';
 
 type Props = StackScreenProps<RootStackParamList, 'AddCard'>;
 
 export const AddCardScreen: React.FC<Props> = ({ navigation }) => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
   
-  const { formData, errors, updateFormData, validate } = useForm<CardFormData>(
-    { number: '', expiryDate: '', cvv: '', country: '', holderName: '' },
-    validateCardForm
-  );
+  const [formData, setFormData] = useState<CardFormData>({
+    number: '', expiryDate: '', cvv: '', country: '', holderName: ''
+  });
 
-  const handleAddCard = () => {
-    if (validate()) {
-      // Simular guardado
-      console.log("Nueva tarjeta:", formData);
-      Alert.alert("Éxito", "Tarjeta agregada correctamente.", [
-        { text: "OK", onPress: () => navigation.goBack() }
-      ]);
+  const handleSave = async () => {
+    if (formData.number.length < 16 || !formData.holderName || !formData.cvv || !user) {
+      Alert.alert("Error", "Por favor completa los datos correctamente.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await DatabaseService.addCard(Number(user.id), formData);
+      
+      if (result.success) {
+        Alert.alert("Éxito", "Tarjeta guardada correctamente.", [
+          { text: "OK", onPress: () => navigation.goBack() }
+        ]);
+      } else {
+        Alert.alert("Atención", result.error || "No se pudo guardar.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Ocurrió un problema técnico.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F2F2F2" />
-      
-      {/* Header Estilo Tarjeta */}
-      <View style={styles.headerCard}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={28} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Pago</Text>
-          <View style={{width: 28}} /> 
-        </View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={28} color={COLORS.text} /></TouchableOpacity>
+        <Text style={styles.headerTitle}>Agregar Tarjeta</Text>
+        <View style={{ width: 28 }} />
       </View>
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{flex:1}}>
+        <ScrollView contentContainerStyle={styles.content}>
           
-          <Text style={styles.sectionTitle}>Agregar Tarjeta</Text>
-
-          {/* Número de Tarjeta */}
-          <Text style={styles.label}>Número de tarjeta</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.number}
-            onChangeText={(text) => updateFormData('number', text)}
-            keyboardType="number-pad"
-            placeholder="XXXX XXXX XXXX XXXX"
-          />
-          {errors.number && <Text style={styles.errorText}>{errors.number}</Text>}
-
-          {/* Fila: Fecha y CVV (CORREGIDO) */}
-          <View style={styles.rowContainer}>
-            <View style={styles.halfInputContainer}>
-              {/* Contenedor de altura fija para alinear */}
-              <View style={styles.fixedLabelContainer}>
-                <Text style={styles.labelNoMargin}>Fecha de vencimiento</Text>
-              </View>
-              <TextInput
-                style={styles.input}
-                value={formData.expiryDate}
-                onChangeText={(text) => updateFormData('expiryDate', text)}
-                placeholder="MM/YY"
-                maxLength={5}
-              />
-              {errors.expiryDate && <Text style={styles.errorText}>{errors.expiryDate}</Text>}
+          {/* Card Preview Visual */}
+          <View style={styles.cardPreview}>
+            <View style={styles.cardChip} />
+            <Text style={styles.cardNumberPreview}>
+              {formData.number ? formData.number.match(/.{1,4}/g)?.join(' ') : '**** **** **** ****'}
+            </Text>
+            <View style={styles.cardBottom}>
+              <Text style={styles.cardNamePreview}>{formData.holderName.toUpperCase() || 'NOMBRE TITULAR'}</Text>
+              <Ionicons name="card" size={30} color="white" />
             </View>
-            
-            <View style={[styles.halfInputContainer, { marginLeft: 15 }]}>
-              {/* Contenedor de altura fija para alinear */}
-              <View style={styles.fixedLabelContainer}>
-                <Text style={styles.labelNoMargin}>CVV</Text>
-              </View>
-              <TextInput
-                style={styles.input}
-                value={formData.cvv}
-                onChangeText={(text) => updateFormData('cvv', text)}
-                keyboardType="number-pad"
-                placeholder="123"
-                maxLength={4}
+          </View>
+          
+          <Text style={styles.label}>Número de Tarjeta</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="0000 0000 0000 0000" 
+            keyboardType="numeric" 
+            maxLength={16}
+            value={formData.number}
+            onChangeText={t => setFormData({...formData, number: t})}
+          />
+
+          <View style={styles.row}>
+            <View style={{flex:1, marginRight:10}}>
+              <Text style={styles.label}>Expiración</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="MM/YY" 
+                maxLength={5}
+                value={formData.expiryDate}
+                onChangeText={t => setFormData({...formData, expiryDate: t})}
               />
-              {errors.cvv && <Text style={styles.errorText}>{errors.cvv}</Text>}
+            </View>
+            <View style={{flex:1, marginLeft:10}}>
+              <Text style={styles.label}>CVV</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="123" 
+                keyboardType="numeric" 
+                maxLength={4}
+                secureTextEntry
+                value={formData.cvv}
+                onChangeText={t => setFormData({...formData, cvv: t})}
+              />
             </View>
           </View>
 
-          {/* Divisa */}
-          <Text style={styles.label}>Divisa de la tarjeta</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.country}
-            onChangeText={(text) => updateFormData('country', text)}
-            placeholder="ej. Mexico"
-          />
-          {errors.country && <Text style={styles.errorText}>{errors.country}</Text>}
-
-          {/* Nombre Opcional */}
-          <Text style={styles.label}>Nombre (Opcional)</Text>
-          <TextInput
-            style={styles.input}
+          <Text style={styles.label}>Nombre del Titular</Text>
+          <TextInput 
+            style={styles.input} 
+            placeholder="Como aparece en la tarjeta"
             value={formData.holderName}
-            onChangeText={(text) => updateFormData('holderName', text)}
-            placeholder="ej. Tarjeta de trabajo"
+            onChangeText={t => setFormData({...formData, holderName: t})}
           />
 
-          {/* Botón Agregar */}
-          <TouchableOpacity style={styles.addButton} onPress={handleAddCard}>
-            <Text style={styles.addButtonText}>Agregar Tarjeta</Text>
+          <TouchableOpacity 
+            style={[styles.saveButton, loading && {opacity: 0.7}]} 
+            onPress={handleSave}
+            disabled={loading}
+          >
+            <Text style={styles.saveText}>{loading ? 'GUARDANDO...' : 'GUARDAR TARJETA'}</Text>
           </TouchableOpacity>
 
         </ScrollView>
@@ -136,95 +124,20 @@ export const AddCardScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F2',
-  },
-  headerCard: {
-    backgroundColor: COLORS.white,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    elevation: 5,
-    zIndex: 10,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 25,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  scrollContent: {
-    paddingHorizontal: 25,
-    paddingTop: 30,
-    paddingBottom: 40,
-  },
-  sectionTitle: {
-    fontSize: FONT_SIZES.xlarge,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 25,
-  },
-  label: {
-    fontSize: FONT_SIZES.medium,
-    color: COLORS.text,
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  // Nuevo estilo sin margen inferior porque lo maneja el contenedor fijo
-  labelNoMargin: {
-    fontSize: FONT_SIZES.medium,
-    color: COLORS.text,
-    fontWeight: '500',
-  },
-  // Contenedor clave para la alineación
-  fixedLabelContainer: {
-    height: 45, // Altura suficiente para 2 líneas de texto
-    justifyContent: 'flex-end', // Alinea el texto al fondo, pegado al input
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: COLORS.white,
-    borderRadius: 10,
-    height: 50,
-    paddingHorizontal: 15,
-    marginBottom: 5,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    fontSize: FONT_SIZES.medium,
-    color: COLORS.text,
-  },
-  errorText: {
-    color: COLORS.error,
-    fontSize: FONT_SIZES.small,
-    marginBottom: 10,
-  },
-  rowContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  halfInputContainer: {
-    flex: 1,
-  },
-  addButton: {
-    backgroundColor: COLORS.primary,
-    height: 55,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 40,
-    elevation: 3,
-  },
-  addButtonText: {
-    color: COLORS.white,
-    fontSize: FONT_SIZES.large,
-    fontWeight: 'bold',
-  }
+  container: { flex: 1, backgroundColor: '#F2F2F2' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20 },
+  headerTitle: { fontSize: FONT_SIZES.large, fontWeight: 'bold' },
+  content: { padding: 20 },
+  
+  cardPreview: { backgroundColor: '#1A237E', borderRadius: 15, height: 180, padding: 20, justifyContent: 'space-between', marginBottom: 30, elevation: 5 },
+  cardChip: { width: 40, height: 30, backgroundColor: '#FFD700', borderRadius: 5 },
+  cardNumberPreview: { color: 'white', fontSize: 22, letterSpacing: 2, textAlign: 'center' },
+  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  cardNamePreview: { color: '#EEE', fontSize: 14, fontWeight: 'bold' },
+
+  label: { fontSize: 14, color: '#666', marginBottom: 5, fontWeight: '600' },
+  input: { backgroundColor: 'white', height: 50, borderRadius: 10, paddingHorizontal: 15, marginBottom: 20, borderWidth: 1, borderColor: '#E0E0E0', fontSize: 16 },
+  row: { flexDirection: 'row' },
+  saveButton: { backgroundColor: COLORS.primary, height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  saveText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
 });

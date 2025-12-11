@@ -16,13 +16,11 @@ import { COLORS, FONT_SIZES, Order, ClientTabParamList, RootStackParamList } fro
 import DatabaseService from '../../services/DatabaseService';
 import { useAuth } from '../../context/AuthContext';
 
-// Tipo de Navegación Compuesto
 type ClientOrderTrackingNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<ClientTabParamList, 'ClientOrderTrackingTab'>,
   StackNavigationProp<RootStackParamList>
 >;
 
-// Helper de imágenes
 const resolveImage = (imageName: string) => {
   if (imageName?.startsWith('file://')) return { uri: imageName };
   switch (imageName) {
@@ -34,7 +32,6 @@ const resolveImage = (imageName: string) => {
   }
 };
 
-// CORRECCIÓN: Usamos 'export const' para que coincida con el import en ClientTabs
 export const ClientOrderTrackingScreen = () => {
   const navigation = useNavigation<ClientOrderTrackingNavigationProp>();
   const { user } = useAuth();
@@ -46,9 +43,7 @@ export const ClientOrderTrackingScreen = () => {
     if (!user) return;
     setLoading(true);
     try {
-      // Usamos el nuevo método que filtra por ID de usuario
       const data = await DatabaseService.getOrdersByUserId(Number(user.id));
-      
       const formattedData: Order[] = data.map(o => ({
         ...o,
         image: resolveImage(o.image) 
@@ -68,15 +63,30 @@ export const ClientOrderTrackingScreen = () => {
   );
 
   const renderOrderItem = ({ item }: { item: Order }) => {
-    // Determinamos el color y texto del estatus
     let statusColor = COLORS.primary;
     let statusText = "En proceso";
 
+    // SWITCH EN ESPAÑOL
     switch (item.status) {
-      case 'completado': statusText = "Entregado"; statusColor = '#2E7D32'; break; // Verde
-      case 'cancelado': statusText = "Cancelado"; statusColor = '#D50000'; break; // Rojo
-      case 'En proceso': statusText = "En camino"; statusColor = '#FF9800'; break;   // Naranja
-      default: statusText = "Pendiente"; statusColor = COLORS.textSecondary;
+      case 'completado': 
+        statusText = "Entregado"; 
+        statusColor = '#2E7D32'; // Verde
+        break; 
+      case 'cancelado': 
+        statusText = "Cancelado"; 
+        statusColor = '#D50000'; // Rojo
+        break; 
+      case 'En proceso': 
+        statusText = "En camino"; 
+        statusColor = '#FF9800'; // Naranja
+        break;   
+      case 'Pendiente':
+        statusText = "Recibido";
+        statusColor = COLORS.textSecondary;
+        break;
+      default: 
+        statusText = item.status; 
+        statusColor = COLORS.textSecondary;
     }
 
     return (
@@ -96,7 +106,6 @@ export const ClientOrderTrackingScreen = () => {
           </View>
         </View>
 
-        {/* Detalles adicionales */}
         <View style={styles.cardFooter}>
           <Text style={styles.dateText}>Fecha: {item.date}</Text>
           {item.deliveryTime && (
@@ -113,9 +122,7 @@ export const ClientOrderTrackingScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F8F8"/>
-      
       <Text style={styles.mainTitle}>Mis Pedidos</Text>
-
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} style={{marginTop: 50}} />
       ) : (
@@ -125,14 +132,9 @@ export const ClientOrderTrackingScreen = () => {
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>Aún no has realizado pedidos.</Text>
-          }
+          ListEmptyComponent={<Text style={styles.emptyText}>Aún no has realizado pedidos.</Text>}
         />
       )}
-
-      {/* SE ELIMINÓ <ClientBottomNavBar /> porque ya usamos ClientTabs */}
-
     </SafeAreaView>
   );
 };
@@ -142,7 +144,6 @@ const styles = StyleSheet.create({
   mainTitle: { fontSize: FONT_SIZES.xlarge, fontWeight: 'bold', textAlign: 'center', marginVertical: 20, color: COLORS.text },
   listContent: { paddingHorizontal: 20, paddingBottom: 100 },
   emptyText: { textAlign: 'center', marginTop: 50, color: '#999', fontSize: FONT_SIZES.medium },
-  
   card: { backgroundColor: COLORS.white, borderRadius: 20, padding: 15, marginBottom: 15, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   cardImage: { width: 60, height: 60, borderRadius: 30, marginRight: 15 },
@@ -150,10 +151,8 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: FONT_SIZES.medium, fontWeight: 'bold', color: COLORS.text },
   cardSubtitle: { fontSize: FONT_SIZES.small, color: COLORS.textSecondary, marginBottom: 2 },
   cardPrice: { fontSize: FONT_SIZES.medium, fontWeight: 'bold', color: COLORS.primary },
-  
   statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
   statusText: { fontSize: 10, fontWeight: 'bold' },
-
   cardFooter: { borderTopWidth: 1, borderTopColor: '#EEE', paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between' },
   dateText: { fontSize: 12, color: '#888' },
   deliveryText: { fontSize: 12, color: COLORS.text, fontWeight: '500' }

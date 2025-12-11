@@ -1,509 +1,171 @@
-// import React, { useState } from 'react';
-// import { 
-//   View, 
-//   Text, 
-//   StyleSheet, 
-//   SafeAreaView, 
-//   Image, 
-//   FlatList, 
-//   StatusBar,
-//   TouchableOpacity,
-//   Alert,
-//   ScrollView,
-//   Platform
-// } from 'react-native';
-// import { Feather, Ionicons } from '@expo/vector-icons';
-// import { COLORS, FONT_SIZES, CartItem, Order } from '../../../types';
+import React, { useState, useCallback } from 'react';
+import { 
+  View, Text, StyleSheet, SafeAreaView, FlatList, Image, TouchableOpacity, StatusBar, Alert, ActivityIndicator,
+  Platform
+} from 'react-native';
+import { Ionicons, Feather } from '@expo/vector-icons';
+import { StackScreenProps } from '@react-navigation/stack';
+import { useFocusEffect } from '@react-navigation/native';
+import { COLORS, FONT_SIZES, RootStackParamList, CartItem } from '../../../types';
+import DatabaseService from '../../services/DatabaseService';
+import { useAuth } from '../../context/AuthContext';
 
-// // Datos Simulados del Carrito
-// const initialCart: CartItem[] = [
-//   { 
-//     id: '1', 
-//     title: 'Cafe Panda', 
-//     subtitle: 'Latte', 
-//     price: '110.00', 
-//     image: require('../../../assets/cafePanda.png'), 
-//     quantity: 1
-//   },
-//   { 
-//     id: '2', 
-//     title: 'Bowl con Frutas', 
-//     subtitle: 'Fresa, Kiwi, Avena', 
-//     price: '120.99', 
-//     image: require('../../../assets/bowlFrutas.png'), 
-//     quantity: 1
-//   }
-// ];
+type Props = StackScreenProps<RootStackParamList, 'Cart'>;
 
-// // Datos Simulados del Historial del Cliente
-// const historyOrders: Order[] = [
-//   { 
-//     id: '101', 
-//     title: 'Cafe Panda', 
-//     subtitle: 'Latte', 
-//     price: '110.00', 
-//     image: require('../../../assets/cafePanda.png'), 
-//     status: 'completed',
-//     deliveryTime: 'Entregado a las 7:30pm',
-//     date: '27/11/2025',
-//     historyNotes: 'Fueron a comprar la leche'
-//   },
-//   { 
-//     id: '102', 
-//     title: 'Bowl con Frutas', 
-//     subtitle: 'Fresa, Kiwi, Avena', 
-//     price: '120.99', 
-//     image: require('../../../assets/bowlFrutas.png'), 
-//     status: 'cancelled',
-//     deliveryTime: 'Cerrado a las 8:00pm',
-//     date: '26/11/2025',
-//     historyNotes: 'Falta de ingredientes'
-//   }
-// ];
+const resolveImage = (imageName: string) => {
+  if (imageName?.startsWith('file://')) return { uri: imageName };
+  switch (imageName) {
+    case 'bowlFrutas': return require('../../../assets/bowlFrutas.png');
+    case 'tostadaAguacate': return require('../../../assets/tostadaAguacate.png');
+    case 'Panques': return require('../../../assets/Panques.png');
+    case 'cafePanda': return require('../../../assets/cafePanda.png');
+    default: return require('../../../assets/logoApp.png'); 
+  }
+};
 
-// export const CartScreen = ({ navigation }: { navigation: any }) => {
-//   const [activeTab, setActiveTab] = useState<'process' | 'history'>('process');
-//   const [cartItems, setCartItems] = useState<CartItem[]>(initialCart);
+export const CartScreen: React.FC<Props> = ({ navigation }) => {
+  const { user } = useAuth();
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-//   // Cálculos
-//   const subtotal = cartItems.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-//   const serviceFee = 40; 
-//   const total = subtotal + serviceFee;
+  // Cargar carrito real
+  const loadCart = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const items = await DatabaseService.getCartItems(Number(user.id));
+      setCartItems(items);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-//   const handleIncrease = (id: string) => {
-//     setCartItems(prev => prev.map(item => item.id === id ? { ...item, quantity: item.quantity + 1 } : item));
-//   };
+  useFocusEffect(
+    useCallback(() => {
+      loadCart();
+    }, [user])
+  );
 
-//   const handleDecrease = (id: string) => {
-//     setCartItems(prev => prev.map(item => {
-//       if (item.id === id) {
-//         return { ...item, quantity: Math.max(1, item.quantity - 1) };
-//       }
-//       return item;
-//     }));
-//   };
+  const total = cartItems.reduce((sum, item) => sum + (parseFloat(item.price) * item.quantity), 0);
 
-//   const handlePayment = () => {
-//     navigation.navigate('Checkout'); // Navegar a la pantalla de resumen
-//   };
+  const handleIncrement = async (id: string, currentQty: number) => {
+    await DatabaseService.updateCartQuantity(Number(id), currentQty + 1);
+    loadCart(); // Recargar
+  };
 
-//   // --- RENDERIZADO ÍTEM CARRITO (En Proceso) ---
-//   const renderCartItem = ({ item }: { item: CartItem }) => (
-//     <View style={styles.cartCard}>
-//       <Image source={item.image} style={styles.cartImage} />
-      
-//       <View style={styles.cartInfo}>
-//         <Text style={styles.cartTitle}>{item.title}</Text>
-//         <Text style={styles.cartSubtitle}>{item.subtitle}</Text>
-//         <Text style={styles.cartPrice}>${item.price}</Text>
-//       </View>
+  const handleDecrement = async (id: string, currentQty: number) => {
+    if (currentQty > 1) {
+      await DatabaseService.updateCartQuantity(Number(id), currentQty - 1);
+      loadCart();
+    }
+  };
 
-//       {/* Control de Cantidad Vertical Naranja (Estilos corregidos) */}
-//       <View style={styles.quantityContainer}>
-//         {/* Botón MENOS arriba */}
-//         <TouchableOpacity onPress={() => handleDecrease(item.id)} style={styles.qtyButton}>
-//           <Text style={styles.qtyText}>-</Text>
-//         </TouchableOpacity>
-        
-//         {/* Número en medio */}
-//         <Text style={styles.qtyValue}>{item.quantity}</Text>
-        
-//         {/* Botón MÁS abajo */}
-//         <TouchableOpacity onPress={() => handleIncrease(item.id)} style={styles.qtyButton}>
-//           <Text style={styles.qtyText}>+</Text>
-//         </TouchableOpacity>
-//       </View>
-//     </View>
-//   );
+  const handleRemove = (id: string) => {
+    Alert.alert("Eliminar", "¿Quitar producto del carrito?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Quitar", style: "destructive", onPress: async () => {
+          await DatabaseService.removeFromCart(Number(id));
+          loadCart();
+      }}
+    ]);
+  };
 
-//   // --- RENDERIZADO ÍTEM HISTORIAL ---
-//   const renderHistoryItem = ({ item }: { item: Order }) => {
-//     const isCancelled = item.status === 'cancelled';
-//     return (
-//       <View style={styles.historyCard}>
-//         <View style={styles.historyHeader}>
-//           <Image source={item.image} style={styles.historyImage} />
-//           <View style={styles.historyInfo}>
-//             <Text style={styles.cartTitle}>{item.title}</Text>
-//             <Text style={styles.cartSubtitle}>{item.subtitle}</Text>
-//             <Text style={styles.cardPriceOrange}>${item.price}</Text>
-//           </View>
-//         </View>
-        
-//         <View style={styles.historyDetails}>
-//           <Text style={styles.statusTitle}>
-//             {isCancelled ? 'Cancelado' : 'Terminado'}
-//           </Text>
-//           <Text style={styles.statusTime}>
-//             {item.deliveryTime}
-//           </Text>
-//           {item.date && (
-//             <Text style={styles.statusDate}>{item.date}</Text>
-//           )}
-//           <View style={styles.separator} />
-//           <Text style={styles.historyNotes}>{item.historyNotes}</Text>
-//         </View>
-//       </View>
-//     );
-//   };
+  const handleCheckout = () => {
+    if (cartItems.length === 0) return;
+    navigation.navigate('Checkout');
+  };
 
-//   return (
-//     <View style={styles.container}>
-//       <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+  const renderItem = ({ item }: { item: CartItem }) => (
+    <View style={styles.card}>
+      <Image source={resolveImage(item.image)} style={styles.image} />
+      <View style={styles.infoContainer}>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.subtitle}>{item.subtitle}</Text>
+        <Text style={styles.price}>${item.price}</Text>
+      </View>
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity onPress={() => handleRemove(item.id.toString())} style={styles.removeButton}>
+          <Ionicons name="trash-outline" size={20} color="#D50000" />
+        </TouchableOpacity>
+        <View style={styles.quantityControl}>
+          <TouchableOpacity onPress={() => handleDecrement(item.id.toString(), item.quantity)} style={styles.qtyBtn}>
+            <Feather name="minus" size={16} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.qtyText}>{item.quantity}</Text>
+          <TouchableOpacity onPress={() => handleIncrement(item.id.toString(), item.quantity)} style={styles.qtyBtn}>
+            <Feather name="plus" size={16} color={COLORS.text} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
 
-//       {/* Header Estilo Tarjeta */}
-//       <View style={styles.headerCard}>
-//         <View style={styles.headerContent}>
-//           <TouchableOpacity onPress={() => navigation.goBack()}>
-//             <Ionicons name="arrow-back" size={28} color={COLORS.text} />
-//           </TouchableOpacity>
-          
-//           <Text style={styles.headerTitle}>Carrito</Text>
-          
-//           <View>
-//             <Feather name="shopping-cart" size={28} color={COLORS.text} />
-//             <View style={styles.cartBadge}>
-//               <Text style={styles.cartBadgeText}>{cartItems.length}</Text>
-//             </View>
-//           </View>
-//         </View>
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F2F2F2" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Carrito</Text>
+        <View style={{ width: 28 }} />
+      </View>
 
-//         {/* Tabs dentro del Header */}
-//         <View style={styles.tabsContainer}>
-//           <TouchableOpacity 
-//             style={[styles.tabButton, activeTab === 'process' && styles.activeTabBorder]} 
-//             onPress={() => setActiveTab('process')}
-//           >
-//             <Text style={[styles.tabText, activeTab === 'process' && styles.activeTabText]}>En proceso</Text>
-//           </TouchableOpacity>
-          
-//           <TouchableOpacity 
-//             style={[styles.tabButton, activeTab === 'history' && styles.activeTabBorder]} 
-//             onPress={() => setActiveTab('history')}
-//           >
-//             <Text style={[styles.tabText, activeTab === 'history' && styles.activeTabText]}>Historial</Text>
-//           </TouchableOpacity>
-//         </View>
-//       </View>
+      {loading ? <ActivityIndicator size="large" color={COLORS.primary} style={{marginTop: 50}}/> : (
+        <FlatList
+          data={cartItems}
+          renderItem={renderItem}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Feather name="shopping-cart" size={60} color="#CCC" />
+              <Text style={styles.emptyText}>Tu carrito está vacío</Text>
+            </View>
+          }
+        />
+      )}
 
-//       {/* Contenido Principal */}
-//       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-//         {activeTab === 'process' ? (
-//           <>
-//             {/* Lista de Carrito */}
-//             <View style={styles.listContainer}>
-//               {cartItems.map((item) => (
-//                 <View key={item.id}>
-//                   {renderCartItem({ item })}
-//                 </View>
-//               ))}
-//             </View>
-//           </>
-//         ) : (
-//           /* Lista de Historial */
-//           <View style={styles.listContainer}>
-//             {historyOrders.map((item) => (
-//               <View key={item.id}>
-//                 {renderHistoryItem({ item })}
-//               </View>
-//             ))}
-//           </View>
-//         )}
-//       </ScrollView>
+      {cartItems.length > 0 && (
+        <View style={styles.footer}>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+          </View>
+          <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
+            <Text style={styles.checkoutText}>PAGAR</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </SafeAreaView>
+  );
+};
 
-//       {/* Resumen y Botón de Pago (Solo visible en "En proceso") */}
-//       {activeTab === 'process' && (
-//         <View style={styles.summaryContainer}>
-//           <Text style={styles.summaryTitle}>Resumen</Text>
-          
-//           <View style={styles.summaryRow}>
-//             <Text style={styles.summaryLabel}>Productos:</Text>
-//             <Text style={styles.summaryValue}>{cartItems.length}</Text>
-//           </View>
-          
-//           <View style={styles.summaryRow}>
-//             <Text style={styles.summaryLabel}>Subtotal</Text>
-//             <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
-//           </View>
-          
-//           <View style={styles.summaryRow}>
-//             <Text style={styles.summaryLabel}>Servicio</Text>
-//             <Text style={styles.summaryValue}>${serviceFee}</Text>
-//           </View>
-          
-//           <View style={[styles.summaryRow, { marginTop: 10 }]}>
-//             <Text style={styles.totalLabel}>Total</Text>
-//             <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
-//           </View>
-
-//           <TouchableOpacity style={styles.payButton} onPress={handlePayment}>
-//             <Text style={styles.payButtonText}>Ir a Pagar</Text>
-//           </TouchableOpacity>
-//         </View>
-//       )}
-
-//     </View>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: '#F2F2F2',
-//   },
-//   // --- Header ---
-//   headerCard: {
-//     backgroundColor: COLORS.white,
-//     paddingTop: Platform.OS === 'android' ? 40 : 20,
-//     paddingBottom: 0,
-//     borderBottomLeftRadius: 30,
-//     borderBottomRightRadius: 30,
-//     elevation: 5,
-//     shadowColor: '#000',
-//     shadowOffset: { width: 0, height: 2 },
-//     shadowOpacity: 0.1,
-//     shadowRadius: 4,
-//     zIndex: 10,
-//   },
-//   headerContent: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     alignItems: 'center',
-//     paddingHorizontal: 25,
-//     marginBottom: 20,
-//   },
-//   headerTitle: {
-//     fontSize: 24,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//   },
-//   cartBadge: {
-//     position: 'absolute',
-//     top: -5,
-//     right: -5,
-//     backgroundColor: '#F57C00',
-//     width: 18,
-//     height: 18,
-//     borderRadius: 9,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     borderWidth: 1.5,
-//     borderColor: COLORS.white,
-//   },
-//   cartBadgeText: {
-//     color: COLORS.white,
-//     fontSize: 10,
-//     fontWeight: 'bold',
-//   },
-//   tabsContainer: {
-//     flexDirection: 'row',
-//     justifyContent: 'center',
-//   },
-//   tabButton: {
-//     marginHorizontal: 30,
-//     paddingBottom: 10,
-//   },
-//   activeTabBorder: {
-//     borderBottomWidth: 3,
-//     borderBottomColor: '#F57C00',
-//   },
-//   tabText: {
-//     fontSize: FONT_SIZES.large,
-//     fontWeight: '600',
-//     color: COLORS.textSecondary,
-//   },
-//   activeTabText: {
-//     color: COLORS.text,
-//   },
-//   // --- Contenido ---
-//   scrollContent: {
-//     paddingBottom: 20,
-//   },
-//   listContainer: {
-//     padding: 20,
-//   },
-//   // --- Tarjeta Carrito ---
-//   cartCard: {
-//     backgroundColor: COLORS.white,
-//     borderRadius: 20,
-//     padding: 10,
-//     marginBottom: 15,
-//     flexDirection: 'row',
-//     alignItems: 'center', // Centra verticalmente los elementos de la tarjeta
-//     justifyContent: 'space-between', // Separa imagen/info del control de cantidad
-//     elevation: 2,
-//     shadowColor: "#000",
-//     shadowOffset: { width: 0, height: 1 },
-//     shadowOpacity: 0.1,
-//     shadowRadius: 2,
-//   },
-//   cartImage: {
-//     width: 80,
-//     height: 80,
-//     borderRadius: 40,
-//     marginRight: 15,
-//   },
-//   cartInfo: {
-//     flex: 1, // Toma el espacio restante
-//     marginRight: 10,
-//   },
-//   cartTitle: {
-//     fontSize: FONT_SIZES.medium,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//   },
-//   cartSubtitle: {
-//     fontSize: FONT_SIZES.small,
-//     color: COLORS.textSecondary,
-//     marginBottom: 5,
-//   },
-//   cartPrice: {
-//     fontSize: FONT_SIZES.medium,
-//     fontWeight: 'bold',
-//     color: '#F57C00',
-//   },
-  
-//   // --- CONTROL VERTICAL DE CANTIDAD (CORREGIDO) ---
-//   quantityContainer: {
-//     backgroundColor: COLORS.primary, // Naranja
-//     borderRadius: 20, // Bordes más redondeados tipo píldora
-//     width: 40, // Un poco más ancho para comodidad
-//     height: 110, // Altura suficiente
-//     flexDirection: 'column', // Elementos uno debajo del otro
-//     alignItems: 'center', // Centrado horizontal
-//     justifyContent: 'space-between', // Distribución equitativa: top, center, bottom
-//     paddingVertical: 8, // Espacio interno arriba y abajo
-//   },
-//   qtyButton: {
-//     width: '100%',
-//     height: 30, // Área de toque
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//   },
-//   qtyText: {
-//     color: COLORS.white,
-//     fontSize: 22,
-//     fontWeight: 'bold',
-//     lineHeight: 24, // Ayuda a centrar visualmente el caracter
-//   },
-//   qtyValue: {
-//     color: COLORS.white,
-//     fontSize: 18,
-//     fontWeight: 'bold',
-//   },
-  
-//   // --- Tarjeta Historial ---
-//   historyCard: {
-//     backgroundColor: COLORS.white,
-//     borderRadius: 20,
-//     padding: 20,
-//     marginBottom: 15,
-//     elevation: 2,
-//   },
-//   historyHeader: {
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     marginBottom: 15,
-//   },
-//   historyImage: {
-//     width: 80,
-//     height: 80,
-//     borderRadius: 40,
-//     marginRight: 15,
-//   },
-//   historyInfo: {
-//     flex: 1,
-//     justifyContent: 'center',
-//   },
-//   cardPriceOrange: {
-//     fontSize: FONT_SIZES.large,
-//     fontWeight: 'bold',
-//     color: '#F57C00',
-//     marginTop: 5,
-//   },
-//   historyDetails: {
-//     paddingLeft: 10,
-//   },
-//   statusTitle: {
-//     fontSize: FONT_SIZES.medium,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//   },
-//   statusTime: {
-//     fontSize: FONT_SIZES.small,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//     marginTop: 2,
-//   },
-//   statusDate: {
-//     fontSize: FONT_SIZES.small,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//   },
-//   separator: {
-//     height: 1,
-//     backgroundColor: '#E0E0E0',
-//     marginVertical: 10,
-//     width: '100%',
-//   },
-//   historyNotes: {
-//     fontSize: FONT_SIZES.small,
-//     color: '#666',
-//     fontStyle: 'italic',
-//   },
-//   // --- Resumen ---
-//   summaryContainer: {
-//     backgroundColor: COLORS.white,
-//     borderTopLeftRadius: 30,
-//     borderTopRightRadius: 30,
-//     padding: 25,
-//     elevation: 10,
-//     shadowColor: "#000",
-//     shadowOffset: { width: 0, height: -2 },
-//     shadowOpacity: 0.1,
-//     shadowRadius: 5,
-//   },
-//   summaryTitle: {
-//     fontSize: FONT_SIZES.xlarge,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//     marginBottom: 15,
-//   },
-//   summaryRow: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     marginBottom: 8,
-//   },
-//   summaryLabel: {
-//     fontSize: FONT_SIZES.medium,
-//     color: COLORS.text,
-//   },
-//   summaryValue: {
-//     fontSize: FONT_SIZES.medium,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//   },
-//   totalLabel: {
-//     fontSize: FONT_SIZES.large,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//   },
-//   totalValue: {
-//     fontSize: FONT_SIZES.large,
-//     fontWeight: 'bold',
-//     color: COLORS.text,
-//   },
-//   payButton: {
-//     backgroundColor: COLORS.primary,
-//     borderRadius: 25,
-//     height: 55,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     marginTop: 20,
-//   },
-//   payButtonText: {
-//     color: COLORS.white,
-//     fontSize: FONT_SIZES.large,
-//     fontWeight: 'bold',
-//   }
-// });
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F2F2F2' },
+  header: { flexDirection: 'row',paddingTop: Platform.OS === 'android' ? 40 : 20 ,alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 15 },
+  backButton: { padding: 5 },
+  headerTitle: { fontSize: FONT_SIZES.xlarge, fontWeight: 'bold', color: COLORS.text },
+  listContent: { paddingHorizontal: 20, paddingBottom: 100 },
+  emptyContainer: { alignItems: 'center', marginTop: 100 },
+  emptyText: { marginTop: 20, fontSize: FONT_SIZES.medium, color: COLORS.textSecondary },
+  card: { flexDirection: 'row', backgroundColor: COLORS.white, borderRadius: 20, padding: 15, marginBottom: 15, alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 },
+  image: { width: 70, height: 70, borderRadius: 35, marginRight: 15 },
+  infoContainer: { flex: 1 },
+  title: { fontSize: FONT_SIZES.medium, fontWeight: 'bold', color: COLORS.text },
+  subtitle: { fontSize: FONT_SIZES.small, color: COLORS.textSecondary, marginBottom: 5 },
+  price: { fontSize: FONT_SIZES.medium, fontWeight: 'bold', color: COLORS.primary },
+  actionsContainer: { alignItems: 'flex-end', justifyContent: 'space-between', height: 70 },
+  removeButton: { padding: 5 },
+  quantityControl: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderRadius: 15, padding: 5 },
+  qtyBtn: { width: 25, height: 25, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12.5, elevation: 1 },
+  qtyText: { marginHorizontal: 10, fontWeight: 'bold', fontSize: FONT_SIZES.medium },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.white, padding: 20, borderTopLeftRadius: 30, borderTopRightRadius: 30, shadowColor: "#000", shadowOffset: { width: 0, height: -3 }, shadowOpacity: 0.1, shadowRadius: 5, elevation: 20 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingHorizontal: 10 },
+  totalLabel: { fontSize: FONT_SIZES.large, color: COLORS.text, fontWeight: '600' },
+  totalValue: { fontSize: 28, fontWeight: 'bold', color: COLORS.text },
+  checkoutButton: { backgroundColor: COLORS.primary, height: 55, borderRadius: 15, justifyContent: 'center', alignItems: 'center', shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
+  checkoutText: { color: COLORS.white, fontSize: FONT_SIZES.large, fontWeight: 'bold', letterSpacing: 1 },
+});

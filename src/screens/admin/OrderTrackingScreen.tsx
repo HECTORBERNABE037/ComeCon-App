@@ -17,20 +17,17 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 
-// Importamos los tipos de navegación necesarios
 import { COLORS, FONT_SIZES, Order, AdminTabParamList, RootStackParamList } from '../../../types';
 import { OrderActionModal } from '../../components/OrderActionModal';
 import DatabaseService from '../../services/DatabaseService';
 import { sendLocalNotification } from '../../utils/NotificationHelper'; 
 import { useAuth } from '../../context/AuthContext'; 
 
-// Definición de Tipo de Navegación (Tabs Admin + Stack Global)
 type OrderTrackingNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<AdminTabParamList, 'OrderTrackingTab'>,
   StackNavigationProp<RootStackParamList>
 >;
 
-// Helper para imágenes locales
 const resolveImage = (imageName: string) => {
   if (imageName?.startsWith('file://')) return { uri: imageName };
   
@@ -77,7 +74,6 @@ export const OrderTrackingScreen = () => {
     }, [])
   );
 
-  // --- NOTIFICACIONES ---
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (user?.allowNotifications) {
@@ -91,10 +87,12 @@ export const OrderTrackingScreen = () => {
     return () => clearTimeout(timer);
   }, [user]); 
 
-  // FILTRADO
+  // FILTRADO (LÓGICA EN ESPAÑOL)
   const filteredOrders = allOrders.filter(order => {
-    const processStatuses = ['process', 'pending', 'En proceso', 'Pendiente'];
-    const isProcess = processStatuses.includes(order.status);
+    const activeStatuses = ['En proceso', 'Pendiente'];
+    const isProcess = activeStatuses.includes(order.status);
+    
+    // Si la pestaña es "process", mostramos los activos. Si no, el resto (completado/cancelado)
     const matchesTab = activeTab === 'process' ? isProcess : !isProcess; 
 
     const matchesSearch = searchQuery === "" || 
@@ -104,7 +102,6 @@ export const OrderTrackingScreen = () => {
     return matchesTab && matchesSearch;
   });
 
-  // Acciones
   const handleOpenActionModal = (order: Order) => {
     setSelectedOrder(order);
     setIsModalVisible(true);
@@ -127,7 +124,8 @@ export const OrderTrackingScreen = () => {
       { text: "Cancelar", style: "cancel" },
       { text: "Sí", onPress: async () => {
         try {
-          await DatabaseService.updateOrderStatus(Number(orderId), 'completed', 'Completado por Admin', 'Entregado ahora');
+          // GUARDAMOS 'completado'
+          await DatabaseService.updateOrderStatus(Number(orderId), 'completado', 'Completado por Admin', 'Entregado ahora');
           setIsModalVisible(false); setSelectedOrder(null); loadOrders();
         } catch (error) { Alert.alert("Error", "Fallo al completar"); }
       }}
@@ -139,7 +137,8 @@ export const OrderTrackingScreen = () => {
       { text: "No", style: "cancel" },
       { text: "Sí", style: 'destructive', onPress: async () => {
         try {
-          await DatabaseService.updateOrderStatus(Number(orderId), 'cancelled', 'Cancelado por Admin', 'Cancelado ahora');
+          // GUARDAMOS 'cancelado'
+          await DatabaseService.updateOrderStatus(Number(orderId), 'cancelado', 'Cancelado por Admin', 'Cancelado ahora');
           setIsModalVisible(false); setSelectedOrder(null); loadOrders();
         } catch (error) { Alert.alert("Error", "Fallo al cancelar"); }
       }}
@@ -155,6 +154,7 @@ export const OrderTrackingScreen = () => {
             <Text style={styles.cardTitle}>{item.title}</Text>
             <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
             <Text style={styles.cardPrice}>${item.price}</Text>
+            <Text style={{fontSize:12, color: COLORS.primary, fontWeight:'bold'}}>{item.status}</Text>
           </View>
           <TouchableOpacity style={styles.cardAction} onPress={() => handleOpenActionModal(item)}>
             <Ionicons name="megaphone-outline" size={24} color={COLORS.text} />
@@ -162,7 +162,7 @@ export const OrderTrackingScreen = () => {
         </View>
       );
     } else {
-      const isCancelled = item.status.toLowerCase().includes('cancel');
+      const isCancelled = item.status === 'cancelado';
       return (
         <View style={styles.historyCard}>
           <View style={styles.historyHeader}>
@@ -177,9 +177,9 @@ export const OrderTrackingScreen = () => {
             <Text style={[styles.statusTitle, isCancelled && {color: 'red'}]}>
               {isCancelled ? 'Cancelado' : (item.status === 'completado' ? 'Entregado' : item.status)}
             </Text>
-            <Text style={styles.statusTime}>{item.deliveryTime || 'Sin hora'}</Text>
+            <Text style={styles.statusTime}>{item.deliveryTime || 'Sin hora registrada'}</Text>
             <View style={styles.separator} />
-            <Text style={styles.historyNotes}>{item.historyNotes || '-'}</Text>
+            <Text style={styles.historyNotes}>{item.historyNotes || 'Sin notas adicionales'}</Text>
           </View>
         </View>
       );
@@ -189,7 +189,6 @@ export const OrderTrackingScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F8F8"/>
-      
       <Text style={styles.mainTitle}>Ordenes Recibidas</Text>
 
       <View style={styles.tabsContainer}>
@@ -228,13 +227,10 @@ export const OrderTrackingScreen = () => {
         />
       )}
 
-      {/* SE ELIMINÓ: <AdminBottomNavBar /> */}
-
       <OrderActionModal
         visible={isModalVisible} order={selectedOrder} onClose={() => setIsModalVisible(false)}
         onUpdate={handleUpdateOrder} onComplete={handleCompleteOrder} onCancel={handleCancelOrder}
       />
-
     </SafeAreaView>
   );
 };

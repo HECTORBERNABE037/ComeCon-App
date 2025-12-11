@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { ProductFormData, PromotionFormData, AdminProfileFormData } from '../../types';
+import { ProductFormData, PromotionFormData, AdminProfileFormData, CardFormData } from '../../types';
 
 class DatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -94,6 +94,30 @@ class DatabaseService {
           FOREIGN KEY (productId) REFERENCES products (id)
         );
       `);
+      //TABLA CARRITO
+      await this.db.execAsync(`
+        CREATE TABLE IF NOT EXISTS cart (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          productId INTEGER NOT NULL,
+          quantity INTEGER NOT NULL,
+          FOREIGN KEY (userId) REFERENCES users (id),
+          FOREIGN KEY (productId) REFERENCES products (id)
+        );
+      `);
+
+      //TABLA TARJETAS DEL CLIENTE
+      await this.db.execAsync(`
+        CREATE TABLE IF NOT EXISTS cards (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          userId INTEGER NOT NULL,
+          lastFour TEXT NOT NULL,
+          holderName TEXT NOT NULL,
+          expiryDate TEXT,
+          type TEXT,
+          FOREIGN KEY (userId) REFERENCES users (id)
+        );
+      `);
     } catch (error) {
       console.error('Error creando tablas:', error);
     }
@@ -127,18 +151,20 @@ class DatabaseService {
         await this.db.runAsync('INSERT INTO products (title, subtitle, price, description, image, visible) VALUES (?, ?, ?, ?, ?, ?)', p);
       }
       // --- ORDENES DE PRUEBA ---
-        // Orden 1: En Proceso (Bowl)
-        await this.db.runAsync('INSERT INTO orders (userId, total, status, date, deliveryTime, historyNotes) VALUES (?, ?, ?, ?, ?, ?)', [2, 120.99, 'process', '2025-10-27', '7:30pm', '']);
-        await this.db.runAsync('INSERT INTO order_items (orderId, productId, quantity, priceAtMoment) VALUES (?, ?, ?, ?)', [1, 1, 1, 120.99]); // Bowl
+        // Orden 1: En proceso
+        await this.db.runAsync('INSERT INTO orders (userId, total, status, date, deliveryTime, historyNotes) VALUES (?, ?, ?, ?, ?, ?)', 
+          [2, 120.99, 'En proceso', '2025-10-27', '7:30pm', 'Preparando ingredientes']); // <--- CAMBIO
+        await this.db.runAsync('INSERT INTO order_items (orderId, productId, quantity, priceAtMoment) VALUES (?, ?, ?, ?)', [1, 1, 1, 120.99]);
 
-        // Orden 2: Completada (Cafe Panda)
-        await this.db.runAsync('INSERT INTO orders (userId, total, status, date, deliveryTime, historyNotes) VALUES (?, ?, ?, ?, ?, ?)', [2, 110.00, 'completed', '2025-10-26', 'Entregado 8:00pm', 'Cliente feliz']);
-        await this.db.runAsync('INSERT INTO order_items (orderId, productId, quantity, priceAtMoment) VALUES (?, ?, ?, ?)', [2, 4, 1, 110.00]); // Cafe
+        // Orden 2: Completada
+        await this.db.runAsync('INSERT INTO orders (userId, total, status, date, deliveryTime, historyNotes) VALUES (?, ?, ?, ?, ?, ?)', 
+          [2, 110.00, 'completado', '2025-10-26', 'Entregado 8:00pm', 'Cliente feliz']); // <--- CAMBIO
+        await this.db.runAsync('INSERT INTO order_items (orderId, productId, quantity, priceAtMoment) VALUES (?, ?, ?, ?)', [2, 4, 1, 110.00]);
 
-        // Orden 3: Cancelada (Tostada)
-        await this.db.runAsync('INSERT INTO orders (userId, total, status, date, deliveryTime, historyNotes) VALUES (?, ?, ?, ?, ?, ?)', [2, 150.80, 'cancelled', '2025-10-25', 'Cancelado 9:00am', 'Falta de aguacate']);
-        await this.db.runAsync('INSERT INTO order_items (orderId, productId, quantity, priceAtMoment) VALUES (?, ?, ?, ?)', [3, 2, 1, 150.80]); // Tostada
-
+        // Orden 3: Cancelada
+        await this.db.runAsync('INSERT INTO orders (userId, total, status, date, deliveryTime, historyNotes) VALUES (?, ?, ?, ?, ?, ?)', 
+          [2, 150.80, 'cancelado', '2025-10-25', 'Cancelado 9:00am', 'Falta de aguacate']); // <--- CAMBIO
+        await this.db.runAsync('INSERT INTO order_items (orderId, productId, quantity, priceAtMoment) VALUES (?, ?, ?, ?)', [3, 2, 1, 150.80]);
     }
   }
 
@@ -320,7 +346,7 @@ class DatabaseService {
     console.log(`📦 Productos: ${products.length}`);
   }
 
-  // --- NUEVOS MÉTODOS PARA ÓRDENES ---
+  // --- ÓRDENES ---
 
   // Obtener todas las órdenes uniendo con productos para tener la imagen y título principal
   async getOrders(): Promise<any[]> {
@@ -415,6 +441,170 @@ class DatabaseService {
       console.error("Error cargando órdenes de cliente:", error);
       return [];
     }
+  }
+  // --- CARRITO (NUEVOS MÉTODOS) ---
+
+  async addToCart(userId: number, productId: number, quantity: number): Promise<void> {
+    if (!this.db) return;
+    try {
+      // Verificar si ya existe el producto en el carrito del usuario
+      const existing = await this.db.getFirstAsync(
+        'SELECT id, quantity FROM cart WHERE userId = ? AND productId = ?',
+        [userId, productId]
+      ) as { id: number, quantity: number } | null;
+
+      if (existing) {
+        // Si existe, sumamos la cantidad
+        const newQuantity = existing.quantity + quantity;
+        await this.db.runAsync('UPDATE cart SET quantity = ? WHERE id = ?', [newQuantity, existing.id]);
+      } else {
+        // Si no, insertamos nuevo
+        await this.db.runAsync(
+          'INSERT INTO cart (userId, productId, quantity) VALUES (?, ?, ?)',
+          [userId, productId, quantity]
+        );
+      }
+    } catch (error) {
+      console.error("Error addToCart:", error);
+      throw error;
+    }
+  }
+
+  async getCartItems(userId: number): Promise<any[]> {
+    if (!this.db) return [];
+    try {
+      // JOIN para traer datos del producto y su precio (incluso promocional)
+      const query = `
+        SELECT 
+          c.id as cartId, c.quantity,
+          p.id as productId, p.title, p.subtitle, p.price, p.image,
+          pr.promotionalPrice, pr.visible as promoVisible
+        FROM cart c
+        JOIN products p ON c.productId = p.id
+        LEFT JOIN promotions pr ON p.id = pr.productId AND pr.visible = 1
+        WHERE c.userId = ?
+      `;
+      const items = await this.db.getAllAsync(query, [userId]);
+      
+      // Formateamos para que la UI lo entienda como CartItem
+      return items.map((item: any) => {
+        // Determinamos precio final
+        const finalPrice = item.promotionalPrice != null ? item.promotionalPrice : item.price;
+        return {
+          id: item.cartId.toString(), // ID de la fila del carrito, no del producto
+          title: item.title,
+          subtitle: item.subtitle,
+          price: finalPrice.toString(),
+          image: item.image || 'logoApp',
+          quantity: item.quantity,
+          productId: item.productId // Guardamos ref al producto real
+        };
+      });
+    } catch (error) {
+      console.error("Error getCartItems:", error);
+      return [];
+    }
+  }
+
+  async updateCartQuantity(cartId: number, quantity: number): Promise<void> {
+    if (!this.db) return;
+    await this.db.runAsync('UPDATE cart SET quantity = ? WHERE id = ?', [quantity, cartId]);
+  }
+
+  async removeFromCart(cartId: number): Promise<void> {
+    if (!this.db) return;
+    await this.db.runAsync('DELETE FROM cart WHERE id = ?', [cartId]);
+  }
+
+  async clearCart(userId: number): Promise<void> {
+    if (!this.db) return;
+    await this.db.runAsync('DELETE FROM cart WHERE userId = ?', [userId]);
+  }
+
+  // TRANSACCIÓN DE COMPRA
+  async createOrderFromCart(userId: number, total: number, paymentDetails: string): Promise<boolean> {
+    if (!this.db) return false;
+    
+    try {
+      // 1. Obtener items del carrito actual
+      const cartItems = await this.getCartItems(userId);
+      if (cartItems.length === 0) return false;
+
+      // 2. Crear la Orden
+      const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const status = 'Pendiente'; // Estado inicial en español
+      
+      const result = await this.db.runAsync(
+        'INSERT INTO orders (userId, total, status, date, deliveryTime, historyNotes) VALUES (?, ?, ?, ?, ?, ?)',
+        [userId, total, status, date, 'Calculando...', paymentDetails]
+      );
+      
+      const orderId = result.lastInsertRowId;
+
+      // 3. Mover items de 'cart' a 'order_items'
+      for (const item of cartItems) {
+        await this.db.runAsync(
+          'INSERT INTO order_items (orderId, productId, quantity, priceAtMoment) VALUES (?, ?, ?, ?)',
+          [orderId, item.productId, item.quantity, parseFloat(item.price)]
+        );
+      }
+
+      // 4. Vaciar Carrito
+      await this.clearCart(userId);
+
+      console.log(`✅ Orden ${orderId} creada con éxito.`);
+      return true;
+
+    } catch (error) {
+      console.error("Error en checkout:", error);
+      return false;
+    }
+  }
+  // --- TARJETAS (NUEVOS MÉTODOS) ---
+
+  // Obtener tarjetas del usuario
+  async getCards(userId: number): Promise<any[]> {
+    if (!this.db) return [];
+    try {
+      return await this.db.getAllAsync('SELECT * FROM cards WHERE userId = ?', [userId]);
+    } catch (error) {
+      console.error("Error obteniendo tarjetas:", error);
+      return [];
+    }
+  }
+
+  // Guardar nueva tarjeta (con límite de 3)
+  async addCard(userId: number, cardData: CardFormData): Promise<{ success: boolean; error?: string }> {
+    if (!this.db) return { success: false, error: "DB no inicializada" };
+    try {
+      // 1. Verificar cantidad actual
+      const result = await this.db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM cards WHERE userId = ?', [userId]);
+      const count = result?.count || 0;
+
+      if (count >= 3) {
+        return { success: false, error: "Límite alcanzado: Máximo 3 tarjetas." };
+      }
+
+      // 2. Insertar (Guardamos solo últimos 4 dígitos por privacidad en esta demo)
+      const lastFour = cardData.number.slice(-4);
+      const type = cardData.number.startsWith('4') ? 'Visa' : 'MasterCard'; // Lógica simple de detección
+
+      await this.db.runAsync(
+        'INSERT INTO cards (userId, lastFour, holderName, expiryDate, type) VALUES (?, ?, ?, ?, ?)',
+        [userId, lastFour, cardData.holderName, cardData.expiryDate, type]
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error guardando tarjeta:", error);
+      return { success: false, error: "Error al guardar en base de datos." };
+    }
+  }
+
+  // Eliminar tarjeta
+  async deleteCard(cardId: number): Promise<void> {
+    if (!this.db) return;
+    await this.db.runAsync('DELETE FROM cards WHERE id = ?', [cardId]);
   }
 }
 

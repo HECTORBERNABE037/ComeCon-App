@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  Modal, View, Text, StyleSheet, Image, TextInput, TouchableOpacity, Alert, Platform, KeyboardAvoidingView, ScrollView 
+  Modal, 
+  View, 
+  Text, 
+  StyleSheet, 
+  Image, 
+  TextInput, 
+  TouchableOpacity, 
+  Alert, 
+  Platform, 
+  KeyboardAvoidingView, 
+  ScrollView 
 } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { Platillo, ProductFormData, COLORS, FONT_SIZES } from '../../types';
@@ -43,19 +53,23 @@ export const EditProductModal: React.FC<Props> = ({ visible, product, onClose, o
 
   const handleSave = () => {
     if (validate() && product) {
-      // Si hay imagen nueva, usamos esa. Si no, mantenemos la original (que puede ser string 'bowlFrutas' o uri)
-      const finalImage = newImageUri || product.image; 
-      // Nota: Si product.image es un 'require' (número) esto podría ser complejo al guardar en BD.
-      // Pero nuestro DatabaseService guarda strings. Asumimos que 'product.image' visual ya está resuelto,
-      // pero para guardar, si no cambiamos la imagen, no enviamos nada nuevo o enviamos lo que había.
-      // En este caso, simplificamos: Si hay newImageUri, la mandamos.
-      
+      // 1. Clonamos el producto base y sobreescribimos con el formulario
       const updatedProduct: any = { 
         ...product, 
         ...formData,
         visible: isVisible 
       };
-      if (newImageUri) updatedProduct.image = newImageUri;
+
+      // 2. LÓGICA DE PROTECCIÓN DE IMAGEN:
+      if (newImageUri) {
+        // Si el usuario tomó una foto nueva, la incluimos para actualizar
+        updatedProduct.image = newImageUri;
+      } else {
+        // Si NO hay foto nueva, BORRAMOS la propiedad 'image' del objeto.
+        // Esto evita enviar el objeto visual {uri:...} a la base de datos.
+        // Al llegar 'undefined' al servicio, SQLite ignorará la columna y mantendrá la original.
+        delete updatedProduct.image;
+      }
 
       onSave(updatedProduct);
     } else {
@@ -71,7 +85,7 @@ export const EditProductModal: React.FC<Props> = ({ visible, product, onClose, o
     showImageOptions(setNewImageUri);
   };
 
-  // Lógica de visualización: Si hay nueva, mostrar esa. Si no, la original del producto.
+  // Visualización: Si hay nueva imagen, úsala. Si no, usa la original del producto.
   const displayImage = newImageUri ? { uri: newImageUri } : product?.image;
 
   if (!product) return null;
@@ -96,9 +110,12 @@ export const EditProductModal: React.FC<Props> = ({ visible, product, onClose, o
 
             <TextInput style={styles.input} placeholder="Nombre" value={formData.title} onChangeText={(t) => updateFormData('title', t)} />
             {errors.title && <Text style={styles.errorText}>{errors.title}</Text>}
+            
             <TextInput style={styles.input} placeholder="Subtítulo" value={formData.subtitle} onChangeText={(t) => updateFormData('subtitle', t)} />
+            
             <TextInput style={styles.input} placeholder="Precio Base" value={formData.price} onChangeText={(t) => updateFormData('price', t)} keyboardType="numeric"/>
             {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
+            
             <View style={styles.descriptionContainer}>
               <TextInput style={[styles.input, styles.textArea]} placeholder="Descripción" value={formData.description} onChangeText={(t) => updateFormData('description', t)} multiline maxLength={100}/>
               <Text style={styles.charCounter}>{formData.description.length} / 100</Text>
@@ -108,14 +125,19 @@ export const EditProductModal: React.FC<Props> = ({ visible, product, onClose, o
               <TouchableOpacity style={styles.actionButton} onPress={() => setIsVisible(!isVisible)}>
                 <Ionicons name={isVisible ? "eye-outline" : "eye-off-outline"} size={32} color={isVisible ? COLORS.text : COLORS.textSecondary} />
               </TouchableOpacity>
+              
               <TouchableOpacity style={[styles.actionButton, styles.saveButton]} onPress={handleSave}>
                 <Feather name="check" size={32} color={COLORS.white} />
               </TouchableOpacity>
+              
               <TouchableOpacity style={styles.actionButton} onPress={() => onDelete(product.id.toString())}>
                 <Ionicons name="trash-outline" size={32} color={COLORS.error} />
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={{marginTop: 15}} onPress={onClose}><Text style={{color: COLORS.textSecondary, textDecorationLine:'underline'}}>Cancelar</Text></TouchableOpacity>
+            
+            <TouchableOpacity style={{marginTop: 15}} onPress={onClose}>
+              <Text style={{color: COLORS.textSecondary, textDecorationLine:'underline'}}>Cancelar</Text>
+            </TouchableOpacity>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
