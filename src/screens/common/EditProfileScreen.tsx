@@ -16,12 +16,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { StackScreenProps } from '@react-navigation/stack';
 import { RootStackParamList, COLORS, FONT_SIZES, ClientProfileFormData } from '../../../types';
-import { DataRepository } from '../../services/DataRepository'; // <--- Usamos Repositorio
+import { DataRepository } from '../../services/DataRepository'; 
 import { useAuth } from '../../context/AuthContext';
 
 type Props = StackScreenProps<RootStackParamList, 'EditClientProfile'>;
 
-const EditClientProfileScreen: React.FC<Props> = ({ navigation }) => {
+const EditProfileScreen: React.FC<Props> = ({ navigation }) => {
   
   const { user, refreshUser } = useAuth(); 
   const [loading, setLoading] = useState(false);
@@ -43,7 +43,7 @@ const EditClientProfileScreen: React.FC<Props> = ({ navigation }) => {
       setFormData({
         fullName: user.nombre || '',
         nickname: user.nickname || '',
-        email: user.email || '', // Email suele ser solo lectura
+        email: user.email || '', // Email solo lectura
         phone: user.phone || '',
         gender: user.gender || '',
         country: user.country || '',
@@ -61,8 +61,7 @@ const EditClientProfileScreen: React.FC<Props> = ({ navigation }) => {
     setLoading(true);
 
     try {
-      // Preparamos payload para Django (snake_case si es necesario, pero ApiService/Serializer lo manejan)
-      // Nota: Tu UserSerializer en Django espera 'name', 'phone', etc.
+      // Preparamos payload para Django 
       const payload = {
         name: formData.fullName,
         nickname: formData.nickname,
@@ -70,13 +69,13 @@ const EditClientProfileScreen: React.FC<Props> = ({ navigation }) => {
         gender: formData.gender,
         country: formData.country,
         address: formData.address
-        // No enviamos email porque es el identificador único y suele ser inmutable
+        // No enviamos email porque es el identificador
       };
 
       const result = await DataRepository.updateProfile(payload);
 
       if (result.success) {
-        await refreshUser(); // Recargar datos en la app
+        await refreshUser(); 
         Alert.alert("¡Éxito!", "Perfil actualizado correctamente.", [
           { text: "OK", onPress: () => navigation.goBack() }
         ]);
@@ -211,4 +210,4 @@ const styles = StyleSheet.create({
   saveButtonText: { color: COLORS.white, fontSize: FONT_SIZES.large, fontWeight: 'bold' }
 });
 
-export default EditClientProfileScreen;
+export default EditProfileScreen;

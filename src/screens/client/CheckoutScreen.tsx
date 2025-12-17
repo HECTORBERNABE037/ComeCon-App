@@ -28,8 +28,7 @@ const CheckoutScreen: React.FC<Props> = ({ navigation }) => {
           // 1. Carrito viene de SQLite (Offline-First persistence)
           const items = await DatabaseService.getCartItems(Number(user.id));
           setCartItems(items);
-          
-          // 2. Tarjetas vienen de la API (Online Security)
+          // 2. Tarjetas vienen de la API 
           const cards = await DataRepository.getCards(Number(user.id));
           setSavedCards(cards);
         }
@@ -68,7 +67,7 @@ const CheckoutScreen: React.FC<Props> = ({ navigation }) => {
         paymentMethod = card ? `Tarjeta ${card.type} •••• ${card.lastFour}` : 'Tarjeta';
       }
       
-      // === PROCESAR ORDEN ONLINE ===
+      //  PROCESAR ORDEN ONLINE 
       const result = await DataRepository.createOrder({
         userId: user.id,
         items: cartItems,

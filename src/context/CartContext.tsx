@@ -33,7 +33,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return false;
     try {
       await DatabaseService.addToCart(Number(user.id), productId, quantity);
-      await refreshCart(); // Actualizamos el badge global
+      await refreshCart(); 
       return true;
     } catch (error) {
       console.error(error);

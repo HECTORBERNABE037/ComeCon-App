@@ -16,8 +16,6 @@ export const DataRepository = {
       const apiResult = await ApiService.login(email, password);
       
       if (apiResult.success) {
-        // ¡Éxito! Guardamos copia en SQLite para el futuro (Sync)
-        // OJO: Aquí enviamos la contraseña que ingresó el usuario para guardarla localmente
         await DatabaseService.syncUser(apiResult.data.user, password);
         return { 
           success: true, 
@@ -26,17 +24,13 @@ export const DataRepository = {
           mode: 'online' 
         };
       } 
-      
-      // Si el error NO es de conexión (ej. contraseña mal), fallamos directo.
       if (!apiResult.isNetworkError) {
         return { success: false, error: apiResult.error };
       }
     }
 
-    // 3. ESCENARIO OFFLINE (o Fallo de red): Usar SQLite
+    // 3. ESCENARIO OFFLINE Usar SQLite
     console.log("📂 Usando login Offline...");
-    
-    // CORRECCIÓN AQUÍ: Usamos checkLocalCredentials en lugar de loginUser
     const localUser = await DatabaseService.checkLocalCredentials(email, password);
     
     if (localUser) {
@@ -66,7 +60,6 @@ export const DataRepository = {
       if (result.success) return result.exists;
     }
     // OFFLINE: No se puede verificar cuentas que no están en el dispositivo,
-    // o podrías buscar en SQLite si quisieras permitir reset local (arriesgado).
     return false; 
   },
 
@@ -94,17 +87,15 @@ export const DataRepository = {
         console.log("⚠️ Error sync productos, usando caché local.");
       }
     }
-    
-    // 2. SIEMPRE devolver desde SQLite (Single Source of Truth)
+    // 2. SIEMPRE devolver desde SQLite 
     return await DatabaseService.getProducts();
   },
 
-  // Cards (Online Only)
+  // Cards 
   getCards: async (userId: number) => {
     const state = await NetInfo.fetch();
-    if (!state.isConnected) return []; // O podrías retornar cacheadas si quisieras
+    if (!state.isConnected) return []; 
     const res = await ApiService.getCards();
-    // Filtramos por usuario si el backend devuelve todas (aunque el backend debería filtrar por user en request.user)
     return res.success ? res.data.filter((c: any) => c.user === userId || true) : []; 
   },
 
@@ -120,33 +111,30 @@ export const DataRepository = {
     return await ApiService.deleteCard(cardId);
   },
 
-  // Orders (Online Only)
+  // Orders 
   createOrder: async (orderData: any) => {
     const state = await NetInfo.fetch();
     if (!state.isConnected) return { success: false, error: "Se requiere internet para pedir" };
     
-    // Formatear payload para Django (snake_case)
     const payload = {
       user: orderData.userId,
       total: orderData.total,
-      payment_method: orderData.paymentMethod, // Asegúrate que tu backend tenga este campo o ponlo en 'status'/'notes'
+      payment_method: orderData.paymentMethod,
       address: orderData.address,
       items: orderData.items.map((item: any) => ({
         product_id: item.productId || item.id,
         quantity: item.quantity,
-        price_at_moment: item.price // O promotionalPrice
+        price_at_moment: item.price 
       }))
     };
     return await ApiService.createOrder(payload);
   },
-  //ORDENES PENDIENTE HACERLAR OFFLINE
+
   getOrders: async () => {
     const state = await NetInfo.fetch();
     
     if (!state.isConnected) {
       return { success: false, error: "Necesitas internet para ver tu historial actualizado." };
-      
-      // return { success: true, data: await DatabaseService.getOrdersLocal(...) };
     }
     
     return await ApiService.getOrders();
@@ -164,7 +152,6 @@ export const DataRepository = {
     return false; // Sin internet o error
   },
 
-  // Actualizar un ajuste (Subir a nube -> Guardar en SQLite)
   updateSetting: async (data: any) => {
     const state = await NetInfo.fetch();
     if (!state.isConnected) return { success: false, error: "Necesitas internet para guardar cambios." };
@@ -182,12 +169,9 @@ export const DataRepository = {
     if (!state.isConnected) {
       return { success: false, error: "Necesitas internet para actualizar tus datos." };
     }
-    
-    // Reutilizamos el endpoint de profile que ya creamos en ApiService
     const res = await ApiService.updateProfile(userData);
     
     if (res.success) {
-      // Si el servidor responde OK, actualizamos SQLite para reflejar cambios offline
       await DatabaseService.updateLocalUser(res.data);
     }
     return res;
@@ -201,19 +185,17 @@ export const DataRepository = {
     const res = await ApiService.uploadProfileImage(uri);
     
     if (res.success) {
-      // Si subió bien, actualizamos la referencia local en SQLite para que se vea offline
-      // El backend nos devuelve el usuario actualizado con la URL de la imagen
       await DatabaseService.updateLocalUser(res.data);
     }
     return res;
   },
 
-  // === ADMIN ACTIONS ===
+  //  ADMIN ACTIONS 
 
   getAdminProducts: async () => {
     const state = await NetInfo.fetch();
     if (state.isConnected) {
-      // 1. Sincronizar desde la API (Trae visibles y ocultos si el backend lo permite)
+      // 1. Sincronizar desde la API 
       const res = await ApiService.getProducts();
       if (res.success) {
         await DatabaseService.syncProducts(res.data);
@@ -275,26 +257,24 @@ export const DataRepository = {
      return await ApiService.updateProduct(id, formData);
   },
 
-  // === GESTIÓN DE PROMOCIONES ===
+  // GESTIÓN DE PROMOCIONES
 
   savePromotion: async (productId: number, promoData: any, existingPromoId?: number) => {
     const state = await NetInfo.fetch();
     if (!state.isConnected) return { success: false, error: "Requiere internet" };
 
-    // Payload EXACTO para Django
     const payload = {
-      product: productId, // Debe ser el ID del producto
-      discount_price: parseFloat(promoData.promotionalPrice), // Convertir a número
-      start_date: promoData.startDate, // YYYY-MM-DD
-      end_date: promoData.endDate,     // YYYY-MM-DD
-      description: 'Oferta Especial',  // Opcional, pero bueno tenerlo
-      visible: promoData.visible       // ✅ IMPORTANTE: Booleano
+      product: productId,
+      promotional_price: parseFloat(promoData.promotionalPrice), 
+      start_date: promoData.startDate,
+      end_date: promoData.endDate,
+      description: 'Oferta Especial', 
+      visible: promoData.visible
     };
 
-    console.log("Enviando Promo:", payload); // Para depurar
+    console.log("Enviando Promo Corregida:", payload); 
 
     let res;
-    // Si existe ID de promo, usamos PATCH (update), sino POST (create)
     if (existingPromoId) {
       res = await ApiService.updatePromotion(existingPromoId, payload);
     } else {
@@ -302,7 +282,6 @@ export const DataRepository = {
     }
 
     if (res.success) {
-      // Sincronizar para ver cambios en la app
       const productsRes = await ApiService.getProducts();
       if (productsRes.success) await DatabaseService.syncProducts(productsRes.data);
     }
@@ -316,10 +295,22 @@ export const DataRepository = {
     const res = await ApiService.deletePromotion(promoId);
     
     if (res.success) {
-      // Actualizar lista local para quitar la promo
       const productsRes = await ApiService.getProducts();
       if (productsRes.success) await DatabaseService.syncProducts(productsRes.data);
     }
     return res;
+  },
+  // ACTUALIZAR ESTADOS DE ORDEN
+  updateOrder: async (id: number, data: { status: string, deliveryTime?: string, notes?: string }) => {
+    const state = await NetInfo.fetch();
+    if (!state.isConnected) return { success: false, error: "Requiere internet" };
+
+    const payload = {
+      status: data.status,
+      delivery_time: data.deliveryTime,
+      history_notes: data.notes
+    };
+
+    return await ApiService.updateOrder(id, payload);
   },
 };

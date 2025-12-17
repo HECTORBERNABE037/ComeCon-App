@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = 'http://192.168.1.198:8000/api'; // ⚠️ CAMBIA ESTO POR TU IP LOCAL
+const API_URL = 'http://192.168.1.198:8000/api'; 
 
 // Helper para obtener cabeceras con Token
 const getAuthHeaders = async () => {
@@ -10,7 +10,6 @@ const getAuthHeaders = async () => {
     'Authorization': token ? `Token ${token}` : '' // O 'Bearer ${token}' según tu config de Django
   };
 };
-
 
 export const ApiService = {
 
@@ -40,7 +39,6 @@ export const ApiService = {
       return { success: false, error: "Error en registro" };
     } catch (e) { return { success: false, error: "Error de conexión" }; }
   },
-
 
   //cambiar contraseña metodos
   checkEmail: async (email: string) => {
@@ -72,11 +70,11 @@ export const ApiService = {
     }
   },
 
-  // === MÉTODOS PROTEGIDOS (USAN TOKEN) ===
+  // MÉTODOS PROTEGIDOS USAN TOKEN
 
   getProducts: async () => {
     try {
-      const headers = await getAuthHeaders(); // <--- Token
+      const headers = await getAuthHeaders(); // Token
       const response = await fetch(`${API_URL}/products/`, { method: 'GET', headers });
       const data = await response.json();
       if (response.ok) return { success: true, data: Array.isArray(data) ? data : data.results };
@@ -84,10 +82,10 @@ export const ApiService = {
     } catch (e) { return { success: false, error: "Error de conexión" }; }
   },
 
-  // === TARJETAS ===
+  // TARJETAS
   getCards: async () => {
     try {
-      const headers = await getAuthHeaders(); // <--- Token
+      const headers = await getAuthHeaders(); // Token
       const response = await fetch(`${API_URL}/cards/`, { method: 'GET', headers });
       const data = await response.json();
       if (response.ok) return { success: true, data };
@@ -97,7 +95,7 @@ export const ApiService = {
 
   addCard: async (cardData: any) => {
     try {
-      const headers = await getAuthHeaders(); // <--- Token
+      const headers = await getAuthHeaders(); //  Token
       const response = await fetch(`${API_URL}/cards/`, {
         method: 'POST',
         headers,
@@ -111,25 +109,24 @@ export const ApiService = {
 
   deleteCard: async (cardId: number) => {
     try {
-      const headers = await getAuthHeaders(); // <--- Token
+      const headers = await getAuthHeaders(); //  Token
       const response = await fetch(`${API_URL}/cards/${cardId}/`, { method: 'DELETE', headers });
       if (response.ok) return { success: true };
       return { success: false, error: "No se pudo eliminar" };
     } catch (e) { return { success: false, error: "Error de conexión" }; }
   },
 
-  // === ÓRDENES ===
+  // ORDENES
   createOrder: async (orderPayload: any) => {
     try {
-      const headers = await getAuthHeaders(); // <--- Token CRÍTICO AQUÍ
+      const headers = await getAuthHeaders(); //  Token 
       const response = await fetch(`${API_URL}/orders/`, {
         method: 'POST',
-        headers, // Incluye Authorization: Token ...
+        headers, // Incluye Autorizacion Token
         body: JSON.stringify(orderPayload),
       });
       const data = await response.json();
       if (response.ok) return { success: true, data };
-      // Si falla por 401, el data.detail te lo dirá
       return { success: false, error: data.detail || "Error al procesar la orden" };
     } catch (e) { return { success: false, error: "Error de conexión" }; }
   },
@@ -137,7 +134,7 @@ export const ApiService = {
   // VISUALIZAR ORDENES
   getOrders: async () => {
     try {
-      const headers = await getAuthHeaders(); // <--- Token
+      const headers = await getAuthHeaders(); //  Token
       const response = await fetch(`${API_URL}/orders/`, { 
         method: 'GET', 
         headers 
@@ -145,7 +142,6 @@ export const ApiService = {
       const data = await response.json();
       
       if (response.ok) {
-        // Django puede devolver paginación ({ count: 5, results: [...] }) o lista directa
         const orders = Array.isArray(data) ? data : (data.results || []);
         return { success: true, data: orders };
       }
@@ -154,7 +150,7 @@ export const ApiService = {
       return { success: false, error: "Error de conexión" }; 
     }
   },
-  // === PERFIL Y AJUSTES ===
+  // PERFIL Y AJUSTES 
   getProfile: async () => {
     try {
       const headers = await getAuthHeaders();
@@ -179,7 +175,7 @@ export const ApiService = {
     } catch (e) { return { success: false, error: "Error de conexión" }; }
   },
 
-  // Método específico para subir imagen (multipart/form-data)
+  // subir imagen 
   uploadProfileImage: async (imageUri: string) => {
     try {
       const headers = await getAuthHeaders();
@@ -199,7 +195,7 @@ export const ApiService = {
 
       const response = await fetch(`${API_URL}/profile/`, {
         method: 'PATCH',
-        headers, // Headers sin Content-Type (fetch lo pone automático con boundary)
+        headers, 
         body: formData,
       });
 
@@ -212,12 +208,12 @@ export const ApiService = {
     }
   },
 
-  // === GESTIÓN DE PRODUCTOS (ADMIN) ===
+  // GESTION DE PRODUCTOS (ADMIN)
   
   createProduct: async (productData: FormData) => {
     try {
       const headers = await getAuthHeaders();
-      delete (headers as any)['Content-Type']; // Para FormData
+      delete (headers as any)['Content-Type'];
 
       const response = await fetch(`${API_URL}/products/`, {
         method: 'POST',
@@ -233,7 +229,7 @@ export const ApiService = {
   updateProduct: async (id: number, productData: FormData) => {
     try {
       const headers = await getAuthHeaders();
-      delete (headers as any)['Content-Type']; // Para FormData
+      delete (headers as any)['Content-Type']; 
 
       const response = await fetch(`${API_URL}/products/${id}/`, {
         method: 'PATCH',
@@ -255,7 +251,7 @@ export const ApiService = {
     } catch (e) { return { success: false, error: "Error de conexión" }; }
   },
 
-  // === PROMOCIONES ===
+  // PROMOCIONES 
   
   createPromotion: async (promoData: any) => {
     try {
@@ -266,8 +262,11 @@ export const ApiService = {
         body: JSON.stringify(promoData),
       });
       const data = await response.json();
-      if (response.ok) return { success: true, data };
-      return { success: false, error: "No se pudo crear la promoción" };
+      if (!response.ok) {
+         console.log("❌ ERROR 400 DETALLE:", JSON.stringify(data)); 
+         return { success: false, error: "No se pudo crear" };
+      }
+      return { success: true, data };
     } catch (e) { return { success: false, error: "Error de conexión" }; }
   },
 
@@ -291,6 +290,20 @@ export const ApiService = {
       const response = await fetch(`${API_URL}/promotions/${id}/`, { method: 'DELETE', headers });
       if (response.ok) return { success: true };
       return { success: false, error: "No se pudo eliminar" };
+    } catch (e) { return { success: false, error: "Error de conexión" }; }
+  },
+  // SECCION DE ADMINISTRACION DE ORDENES
+  updateOrder: async (id: number, updateData: any) => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/orders/${id}/`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(updateData),
+      });
+      const data = await response.json();
+      if (response.ok) return { success: true, data };
+      return { success: false, error: "No se pudo actualizar la orden" };
     } catch (e) { return { success: false, error: "Error de conexión" }; }
   },
 

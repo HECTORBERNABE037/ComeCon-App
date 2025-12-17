@@ -22,7 +22,7 @@ class DatabaseService {
   private async createTables(): Promise<void> {
     if (!this.db) return;
     
-    // a) Usuarios
+    // Usuarios
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY,
@@ -41,7 +41,7 @@ class DatabaseService {
       );
     `);
 
-    // b) Productos (Catálogo Offline)
+    //  Productos (Catálogo Offline)
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY,
@@ -56,7 +56,7 @@ class DatabaseService {
       );
     `);
 
-    // c) Carrito (Local)
+    // Carrito (Local)
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS cart (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,7 +67,7 @@ class DatabaseService {
         FOREIGN KEY (productId) REFERENCES products (id)
       );
     `);
-    //d) promociones local
+    //promociones local
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS promotions (
         id INTEGER PRIMARY KEY,
@@ -161,8 +161,7 @@ class DatabaseService {
       return null;
     }
   }
-
-  // Métodos auxiliares para Profile/Settings (si los usas)
+  // Métodos auxiliares para Profile/Settings 
   async updateUserImage(email: string, imageUri: string): Promise<boolean> {
     if (!this.db) return false;
     try {
@@ -196,9 +195,7 @@ class DatabaseService {
     } catch (e) { return false; }
   }
 
-  // ==========================================
   // MÉTODOS DE PRODUCTOS (SYNC)
-  // ==========================================
 
   async syncProducts(apiProducts: any[]): Promise<void> {
     if (!this.db) return;
@@ -216,7 +213,7 @@ class DatabaseService {
           let promoPrice = null;
           let promoId = null;
           
-          // Datos de la promo (ahora vienen SIEMPRE, activos o no)
+          // Datos de la promo 
           if (p.promotion) {
              // Solo mostramos precio tachado en el Home si la promo es VISIBLE
              if (p.promotion.visible) {
@@ -225,7 +222,7 @@ class DatabaseService {
              promoId = p.promotion.id;
           }
 
-          // A) Upsert Producto
+          //  Upsert Producto
           await db.runAsync(
             `INSERT OR REPLACE INTO products (id, title, subtitle, description, price, image, category, promotionalPrice, visible) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -235,7 +232,7 @@ class DatabaseService {
             ]
           );
 
-          // B) Insertar Promoción (Guardamos su estado real)
+          //  Insertar Promoción (Guardamos su estado real)
           if (p.promotion) {
              await db.runAsync(
                `INSERT OR REPLACE INTO promotions (id, productId, description, image, discountPrice, startDate, endDate, visible)
@@ -248,7 +245,7 @@ class DatabaseService {
                  parseFloat(p.promotion.discount_price),
                  p.promotion.start_date || '',
                  p.promotion.end_date || '',
-                 p.promotion.visible ? 1 : 0 // ✅ Guardamos si está activa o pausada
+                 p.promotion.visible ? 1 : 0 
                ]
              );
           }
@@ -260,7 +257,7 @@ class DatabaseService {
     }
   }
 
-  // Cliente: Solo visibles
+  // Cliente: Solo productos visibles
   async getProducts(): Promise<any[]> {
     if (!this.db) return [];
     try {
@@ -273,7 +270,6 @@ class DatabaseService {
   async getPromotionsWithProduct(): Promise<any[]> {
     if (!this.db) return [];
     try {
-      // ✅ FILTRO CLAVE: Solo mostrar promos visibles al cliente
       const query = `
         SELECT pr.id as promoId, pr.description as promoDesc, pr.image as promoImage, pr.discountPrice,
           p.id, p.title, p.description, p.price, p.image, p.category, p.promotionalPrice, p.visible
@@ -282,7 +278,6 @@ class DatabaseService {
         WHERE pr.visible = 1 
       `;
       const results = await this.db.getAllAsync(query);
-      // ... mapeo igual ...
       return results.map((row: any) => ({
         id: row.promoId,
         description: row.promoDesc,
@@ -296,9 +291,7 @@ class DatabaseService {
     } catch (e) { return []; }
   }
 
-  // ==========================================
-  // MÉTODOS DEL CARRITO (CART)
-  // ==========================================
+  // MÉTODOS DEL CARRITO 
 
   async addToCart(userId: number, productId: number, quantity: number): Promise<void> {
     if (!this.db) return;
@@ -312,7 +305,7 @@ class DatabaseService {
       );
 
       if (existingItem) {
-        // 2a. Actualizar cantidad
+        //  Actualizar cantidad
         const newQuantity = existingItem.quantity + quantity;
         await db.runAsync(
           'UPDATE cart SET quantity = ? WHERE id = ?',
@@ -320,7 +313,7 @@ class DatabaseService {
         );
         console.log(`🛒 Cantidad actualizada para producto ${productId}`);
       } else {
-        // 2b. Insertar nuevo
+        // Insertar nuevo
         await db.runAsync(
           'INSERT INTO cart (userId, productId, quantity) VALUES (?, ?, ?)',
           [userId, productId, quantity]
@@ -329,7 +322,7 @@ class DatabaseService {
       }
     } catch (error) {
       console.error("❌ Error addToCart:", error);
-      throw error; // Re-lanzar para que la pantalla pueda mostrar alerta
+      throw error; 
     }
   }
   // Obtener items con detalle de producto
@@ -353,7 +346,7 @@ class DatabaseService {
     }
   }
 
-  // Contar total de productos (para el Badge)
+  // Contar total de productos 
   async getCartCount(userId: number): Promise<number> {
     if (!this.db) return 0;
     try {
@@ -375,18 +368,17 @@ class DatabaseService {
     await this.db.runAsync('DELETE FROM cart WHERE userId = ?', [userId]);
   }
 
-  // Actualiza datos parciales del usuario (ej: Settings o Perfil) 
+  // Actualiza datos parciales del usuario 
   async updateLocalUser(apiUser: any): Promise<void> {
     if (!this.db) return;
     try {
-        // Mapeo de campos API (snake_case) -> DB Local
         const name = apiUser.name || '';
         const nickname = apiUser.nickname || '';
         const phone = apiUser.phone || '';
         const address = apiUser.address || '';
         const gender = apiUser.gender || '';
         const country = apiUser.country || '';
-        const image = apiUser.image || ''; // URL
+        const image = apiUser.image || ''; 
         
         // Settings
         const allowNotif = apiUser.allow_notifications ? 1 : 0;
@@ -409,7 +401,6 @@ class DatabaseService {
   async getAllProductsAdmin(): Promise<any[]> {
     if (!this.db) return [];
     try {
-      // Hacemos un LEFT JOIN para saber si tiene promo (activa o pausada)
       const query = `
         SELECT p.*, pr.id as promoId, pr.discountPrice as promoPriceAdmin, pr.visible as promoVisible
         FROM products p
@@ -424,15 +415,12 @@ class DatabaseService {
         description: p.description || '',
         visible: p.visible === 1,
         price: p.price.toString(),
-        // Para el Admin, mostramos el precio promo si existe registro, aunque esté pausado
         promotionalPrice: p.promoPriceAdmin ? p.promoPriceAdmin.toString() : undefined,
-        promotionId: p.promoId, // Para que el modal sepa editar
-        isPromoActive: p.promoVisible === 1 // Para pintar UI diferente si quieres
+        promotionId: p.promoId, 
+        isPromoActive: p.promoVisible === 1 
       }));
     } catch (error) { return []; }
   }
-
-  
 
   // Eliminar producto localmente
   async deleteProduct(id: number): Promise<void> {
@@ -441,12 +429,9 @@ class DatabaseService {
     await this.db.runAsync('DELETE FROM products WHERE id = ?', [id]);
   }
 
-
-
   async getPromotionByProductId(productId: number): Promise<any | null> {
     if (!this.db) return null;
     try {
-      // Buscamos la promoción ligada al producto
       return await this.db.getFirstAsync('SELECT * FROM promotions WHERE productId = ?', [productId]);
     } catch (error) {
       console.error("Error getPromotionByProductId:", error);
@@ -454,7 +439,5 @@ class DatabaseService {
     }
   }
 }
-
-
 
 export default new DatabaseService();

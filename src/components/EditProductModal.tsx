@@ -45,10 +45,10 @@ export const EditProductModal: React.FC<Props> = ({ visible, product, onClose, o
     if (product) {
       setFormData({
         title: product.title,
-        subtitle: product.subtitle || '', // Aquí carga el subtítulo
+        subtitle: product.subtitle || '', 
         price: product.price,
         description: product.description || '',
-        category: product.category || 'General' // Aquí carga la categoría
+        category: product.category || 'General' 
       });
       setIsVisible(!!product.visible);
       setNewImageUri(null);
@@ -58,7 +58,7 @@ export const EditProductModal: React.FC<Props> = ({ visible, product, onClose, o
   const handleSave = () => {
     if (!product) return;
     
-    // Validación básica (El botón no hace nada si esto falla, por eso agregué Alert)
+    // El botón no hace nada si esto fall
     if (!formData.title || !formData.price) {
       Alert.alert("Campos requeridos", "Por favor ingresa al menos el Nombre y el Precio.");
       return;
@@ -71,11 +71,11 @@ export const EditProductModal: React.FC<Props> = ({ visible, product, onClose, o
       price: formData.price,
       description: formData.description,
       category: formData.category,
-      visible: isVisible, // Enviamos el estado del Switch
+      visible: isVisible, // estado del Switch
       image: newImageUri || product.image 
     };
 
-    // Llamamos a la función del padre
+    // función del padre
     onSave(updatedProduct);
   };
 
@@ -107,7 +107,6 @@ export const EditProductModal: React.FC<Props> = ({ visible, product, onClose, o
             {/* IMAGEN */}
             <View style={styles.imageContainer}>
               <Image source={displayImage} style={styles.productImage} />
-              {/* Badge de Oculto sobre la imagen */}
               {!isVisible && (
                 <View style={styles.hiddenBadge}>
                   <Text style={styles.hiddenText}>OCULTO</Text>
@@ -117,7 +116,6 @@ export const EditProductModal: React.FC<Props> = ({ visible, product, onClose, o
                 <Feather name="camera" size={16} color={COLORS.primary} />
               </TouchableOpacity>
             </View>
-
             {/* SWITCH VISIBILIDAD */}
             <View style={styles.switchRow}>
               <Text style={styles.label}>Visible para clientes</Text>

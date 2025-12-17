@@ -6,7 +6,6 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { COLORS } from '../../types';
 import { AuthContext } from '../context/AuthContext'; // Importamos AuthContext
 
-// ✅ IMPORTANTE: Debe decir 'export const'
 export const AdminBottomNavBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   
   const { logout } = useContext(AuthContext); // Usamos el logout del contexto
@@ -48,7 +47,6 @@ export const AdminBottomNavBar: React.FC<BottomTabBarProps> = ({ state, descript
         onPress={() => handleNavigation('OrderTrackingTab')}
       >
         <Ionicons name="receipt-outline" size={26} color={isOrdersActive ? COLORS.primary : "#C4C4C4"} />
-        {/* Badge opcional */}
         {!isOrdersActive && <View style={styles.badge} />}
       </TouchableOpacity>
 

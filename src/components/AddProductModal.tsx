@@ -15,7 +15,7 @@ import {
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { COLORS, FONT_SIZES, ProductFormData } from '../../types';
 import { useForm } from '../hooks/useForm';
-import { validateProductForm } from '../utils/validationRules'; // Asegúrate de que esta validación no falle si falta subtitle
+import { validateProductForm } from '../utils/validationRules'; 
 import { showImageOptions } from '../utils/ImagePickerHelper';
 import { useAuth } from '../context/AuthContext';
 
@@ -29,7 +29,7 @@ export const AddProductModal: React.FC<Props> = ({ visible, onClose, onSave }) =
   const { user } = useAuth();
   const [imageUri, setImageUri] = useState<string | null>(null);
 
-  // Inicializamos el formulario incluyendo 'category' y 'subtitle'
+  // Inicializamos el formulario 
   const { formData, errors, updateFormData, validate, setFormData } = useForm<ProductFormData>(
     { title: '', subtitle: '', price: '', description: '', category: '' },
     validateProductForm
@@ -45,7 +45,6 @@ export const AddProductModal: React.FC<Props> = ({ visible, onClose, onSave }) =
     const newProduct = {
       ...formData,
       image: imageUri,
-      // Si no escribe categoría, ponemos 'General' por defecto
       category: formData.category || 'General', 
       visible: true
     };

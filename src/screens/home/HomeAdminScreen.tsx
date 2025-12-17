@@ -59,7 +59,7 @@ const HomeAdminScreen: React.FC<HomeAdminScreenProps> = ({ navigation }) => {
   const [selectedProductPromote, setSelectedProductPromote] = useState<Platillo | null>(null);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
 
-  // === CARGAR PRODUCTOS ===
+  // CARGAR PRODUCTOS
   const loadProducts = async () => {
     if (!refreshing) setLoading(true);
     try {
@@ -68,19 +68,12 @@ const HomeAdminScreen: React.FC<HomeAdminScreenProps> = ({ navigation }) => {
       const formattedProducts: Platillo[] = productsFromDB.map((p:any) => ({
         id: p.id.toString(),
         title: p.title,
-        
-        // ✅ CORRECCIÓN 1: Mapeo explícito de campos faltantes
         subtitle: p.subtitle || '', 
         category: p.category || 'General', 
-
         price: p.price.toString(),
         description: p.description || '',
-        
-        // Guardamos la imagen resuelta para mostrarla
         image: resolveImage(p.image),
-        // Guardamos la original para lógica interna (opcional, pero útil)
         originalImageString: p.image, 
-
         promotionalPrice: p.promotionalPrice ? p.promotionalPrice.toString() : undefined,
         promotionId: p.promoId ? p.promoId.toString() : undefined,
         visible: p.visible 
@@ -108,7 +101,7 @@ const HomeAdminScreen: React.FC<HomeAdminScreenProps> = ({ navigation }) => {
 
   const filteredProducts = advancedSearch(productList, searchQuery, ['title', 'category']);
 
-  // === HANDLERS ===
+  //  HANDLERS
 
   const handleAddProduct = async (newProductData: any) => {
     const res = await DataRepository.saveProduct({
@@ -126,12 +119,8 @@ const HomeAdminScreen: React.FC<HomeAdminScreenProps> = ({ navigation }) => {
     }
   };
 
-  // ✅ CORRECCIÓN 2: Lógica de guardado robusta
-  const handleSaveProduct = async (updatedProduct: any) => { // Usamos any para flexibilidad temporal
-    
-    // Problema: 'updatedProduct.image' puede ser un objeto {uri: ...} si no se cambió.
-    // DataRepository espera un string o un objeto con uri nuevo del picker.
-    
+  const handleSaveProduct = async (updatedProduct: any) => { // Usamos any para flexibilidad 
+
     let imageToSave = updatedProduct.image;
 
     // Si es un objeto de imagen resuelta (no del picker) y tiene URI, extraemos la URI string
@@ -153,7 +142,7 @@ const HomeAdminScreen: React.FC<HomeAdminScreenProps> = ({ navigation }) => {
     if (res.success) {
       setIsEditModalVisible(false);
       setSelectedProductEdit(null);
-      loadProducts(); // Recarga vital para ver los cambios
+      loadProducts(); 
       Alert.alert("Éxito", "Producto actualizado.");
     } else {
       Alert.alert("Error", res.error || "No se pudo actualizar.");
@@ -172,17 +161,16 @@ const HomeAdminScreen: React.FC<HomeAdminScreenProps> = ({ navigation }) => {
   };
 
   const handleSavePromotion = async (productId: string, promoData: any, existingPromoId?: number) => {
-    // Si existingPromoId viene del modal, se lo pasamos al repositorio
-    // Si es undefined, el repositorio hará un POST (Crear)
-    // Si es número, hará un PATCH (Actualizar)
+    // Si existingPromoId viene del modal, se pasa al repositorio
+    // Si es undefined, el repositorio hará un POST 
+    // Si es número, hará un PATCH
     const res = await DataRepository.savePromotion(Number(productId), promoData, existingPromoId);
     
     if (res.success) {
       setIsPromoteModalVisible(false);
-      loadProducts(); // Recargamos para ver el precio tachado
+      loadProducts(); 
       Alert.alert("Éxito", existingPromoId ? "Promoción actualizada." : "Promoción creada.");
     } else {
-      // Si falla (ej: 400 Bad Request), mostramos el error
       Alert.alert("Error", res.error || "No se pudo guardar la promoción.");
     }
   };
@@ -202,7 +190,7 @@ const HomeAdminScreen: React.FC<HomeAdminScreenProps> = ({ navigation }) => {
     ]);
   };
 
-  // === RENDER ===
+  //  RENDER
 
   const renderAdminItem = ({ item }: { item: Platillo }) => {
     const hasPromo = !!item.promotionalPrice;
@@ -218,10 +206,10 @@ const HomeAdminScreen: React.FC<HomeAdminScreenProps> = ({ navigation }) => {
         <View style={styles.itemTextContainer}>
           <Text style={[styles.itemTitle, !item.visible && {color: '#999'}]}>{item.title}</Text>
           
-          {/* Mostramos Subtítulo */}
+          {/* Subtítulo */}
           {item.subtitle ? <Text style={styles.itemSubtitle}>{item.subtitle}</Text> : null}
           
-          {/* Mostramos Categoría (Pequeña) */}
+          {/* Categoría */}
           <Text style={{fontSize: 10, color: COLORS.primary, marginBottom: 2, fontWeight:'600'}}>{item.category}</Text>
 
           <View>

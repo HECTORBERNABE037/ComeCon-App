@@ -16,26 +16,25 @@ import { useNavigation, useFocusEffect, CompositeNavigationProp } from '@react-n
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Feather } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker'; // Importamos el Picker
+import * as ImagePicker from 'expo-image-picker'; 
 
 import { COLORS, FONT_SIZES, RootStackParamList, ClientTabParamList } from '../../../types';
 import { useAuth } from '../../context/AuthContext';
-import { DataRepository } from '../../services/DataRepository'; // Importamos Repositorio
+import { DataRepository } from '../../services/DataRepository';
 
 type ClientProfileNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<ClientTabParamList, 'ClientProfileTab'>,
   StackNavigationProp<RootStackParamList>
 >;
 
-// Helper de imagen robusto
+// Helper de imagen 
 const resolveImage = (img: any) => {
   if (img?.uri) return { uri: img.uri };
   if (typeof img === 'string' && (img.startsWith('http') || img.startsWith('file://'))) return { uri: img };
-  // IMPORTANTE: Asegúrate de que esta ruta a tu logo por defecto sea correcta
   return require('../../../assets/logoApp.png'); 
 };
 
-const ClientProfileScreen = () => {
+const ProfileScreen = () => {
   const navigation = useNavigation<ClientProfileNavigationProp>();
   const { user, refreshUser } = useAuth();
   const [uploading, setUploading] = useState(false);
@@ -50,7 +49,7 @@ const ClientProfileScreen = () => {
     navigation.navigate('EditClientProfile');
   };
 
-  // === LÓGICA DE CÁMARA/GALERÍA ===
+  // CAMARA/GALERIA 
   const handleCameraPress = async () => {
     Alert.alert(
       "Foto de Perfil",
@@ -99,7 +98,7 @@ const ClientProfileScreen = () => {
     setUploading(false);
 
     if (result.success) {
-      await refreshUser(); // Actualizar para ver la nueva imagen
+      await refreshUser(); 
       Alert.alert("¡Éxito!", "Tu foto de perfil se ha actualizado.");
     } else {
       Alert.alert("Error", result.error || "No se pudo subir la imagen.");
@@ -116,13 +115,11 @@ const ClientProfileScreen = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F2F2F2" />
       
-      {/* Header Fijo */}
+      {/* Header */}
       <View style={styles.headerCard}>
         <Text style={styles.headerTitle}>Información Personal</Text>
         <View style={styles.headerUnderline} />
       </View>
-
-      {/* ScrollView que envuelve TODO el contenido desplazable */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
         <View style={styles.profileImageContainer}>
@@ -134,7 +131,7 @@ const ClientProfileScreen = () => {
             <Image source={userImage} style={styles.profileImage} />
           )}
           
-          {/* Botón de Cámara FUNCIONAL */}
+          {/* Botón de Cámara*/}
           <TouchableOpacity style={styles.editIconContainer} onPress={handleCameraPress} disabled={uploading}>
              <Feather name="camera" size={18} color={COLORS.text} />
           </TouchableOpacity>
@@ -189,7 +186,6 @@ const ClientProfileScreen = () => {
            </View>
         ) : null}
 
-        {/* Botón Editar (Navega a la otra pantalla) */}
         <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
           <Text style={styles.editButtonText}>EDITAR PERFIL</Text>
         </TouchableOpacity>
@@ -199,7 +195,6 @@ const ClientProfileScreen = () => {
   );
 };
 
-// ESTILOS ORIGINALES CONSERVADOS
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -208,7 +203,7 @@ const styles = StyleSheet.create({
   headerCard: {
     alignItems: 'center',
     marginTop: Platform.OS === 'android' ? 40 : 10,
-    marginBottom: 5, // Reducido un poco el margen inferior
+    marginBottom: 5, 
   },
   headerTitle: {
     fontSize: FONT_SIZES.xlarge,
@@ -221,12 +216,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary, 
     marginTop: 5,
   },
-  // Estilo para el contenido del ScrollView
   scrollContent: {
     paddingHorizontal: 30,
     alignItems: 'center',
     paddingTop: 15,
-    paddingBottom: 200 // Espacio extra al final para que no se pegue el botón
+    paddingBottom: 200 
   },
   profileImageContainer: {
     position: 'relative',
@@ -244,7 +238,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     backgroundColor: COLORS.white,
-    width: 40, // Aumentado ligeramente para que el icono de cámara se vea mejor
+    width: 40, 
     height: 40,
     borderRadius: 20,
     justifyContent: 'center',
@@ -293,4 +287,4 @@ const styles = StyleSheet.create({
   }
 });
 
-export default ClientProfileScreen;
+export default ProfileScreen;

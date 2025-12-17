@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useForm } from '../../hooks/useForm';
 import { validateSetNewPassword } from '../../utils/validationRules';
 
-import DatabaseService from '../../services/DatabaseService';
+//import DatabaseService from '../../services/DatabaseService';
 import { DataRepository } from "../../services/DataRepository";
 
 const loginImage = require("../../../assets/logoApp.png");

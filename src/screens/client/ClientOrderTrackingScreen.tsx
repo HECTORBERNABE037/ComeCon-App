@@ -24,7 +24,6 @@ type ClientOrderTrackingNavigationProp = CompositeNavigationProp<
   StackNavigationProp<RootStackParamList>
 >;
 
-// Helper de Imágenes
 const resolveImage = (imageSource: string | any) => {
   if (!imageSource) return require('../../../assets/logoApp.png');
   if (typeof imageSource === 'string' && (imageSource.startsWith('http') || imageSource.startsWith('file'))) {
@@ -49,7 +48,6 @@ const ClientOrderTrackingScreen = () => {
       const result = await DataRepository.getOrders();
       
       if (result.success) {
-        // ✅ CORRECCIÓN AQUÍ: Usamos (result as any) para evitar el error de TypeScript
         setOrders((result as any).data);
       } else {
         console.log(result.error); 

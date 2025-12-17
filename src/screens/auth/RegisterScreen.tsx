@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { COLORS, FONT_SIZES, RootStackParamList } from "../../../types";
-import { DataRepository } from '../../services/DataRepository'; // <--- NUEVO: Repositorio
+import { DataRepository } from '../../services/DataRepository'; 
 
 const loginImage = require("../../../assets/logoApp.png");
 
@@ -27,7 +27,6 @@ interface RegisterScreenProps {
 
 export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
   
-  // LÓGICA NUEVA: Estados simples en lugar de useForm
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -53,7 +52,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
 
     setIsLoading(true);
 
-    // Llamamos al Repositorio (valida internet automáticamente)
     const result = await DataRepository.register({
       name,
       email,
@@ -160,7 +158,6 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
   );
 };
 
-// ESTILOS ORIGINALES RESTAURADOS
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -172,7 +169,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoContainer: {
-    width: 100, // Ajustado para ser un poco más pequeño en registro
+    width: 100, 
     height: 100,
     borderRadius: 25,
     backgroundColor: COLORS.surfaceSecondary,
@@ -205,7 +202,7 @@ const styles = StyleSheet.create({
     marginBottom: 25
   },
   formContainer: { 
-    backgroundColor: COLORS.white, // Fondo blanco tipo tarjeta
+    backgroundColor: COLORS.white, 
     borderRadius: 15,
     padding: 20,
     shadowColor: "#000",

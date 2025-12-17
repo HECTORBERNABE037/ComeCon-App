@@ -19,7 +19,7 @@ import { validateOrderForm } from '../utils/validationRules';
 
 interface Props {
   visible: boolean;
-  order: Order | null;
+  order: any; // any para flexibilidad con snake_case
   onClose: () => void;
   onUpdate: (orderId: string, data: OrderFormData) => void;
   onComplete: (orderId: string) => void;
@@ -43,9 +43,9 @@ export const OrderActionModal: React.FC<Props> = ({
   useEffect(() => {
     if (order && visible) {
       setFormData({
-        status: order.status, 
-        estimatedTime: order.deliveryTime || '7:30pm',
-        comment: order.historyNotes || ''
+        status: order.status || '', 
+        estimatedTime: order.delivery_time || order.deliveryTime || '',
+        comment: order.history_notes || order.historyNotes || ''
       });
     }
   }, [order, visible]);
@@ -68,6 +68,11 @@ export const OrderActionModal: React.FC<Props> = ({
 
   if (!order) return null;
 
+  // Resolvemos la imagen para mostrar 
+  const imageSource = (order.image && typeof order.image === 'number') 
+    ? order.image 
+    : { uri: order.image }; // Si viene URL o es null, manejamos default fuera 
+
   return (
     <Modal
       animationType="slide"
@@ -83,15 +88,10 @@ export const OrderActionModal: React.FC<Props> = ({
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             
             <Text style={styles.modalTitle}>Acciones de Orden</Text>
+            <Text style={{fontSize: 12, color: '#888', marginBottom: 10}}>ID: #{order.id}</Text>
             
-            {/* Cabecera con Imagen */}
-            <View style={styles.headerContent}>
-              <Text style={styles.productTitle}>{order.title}</Text>
-              <Image source={order.image} style={styles.productImage} />
-            </View>
-
             {/* Input Estatus */}
-            <Text style={styles.label}>Estatus</Text>
+            <Text style={styles.label}>Estatus Actual</Text>
             <TextInput
               style={styles.input}
               value={formData.status}
@@ -101,53 +101,46 @@ export const OrderActionModal: React.FC<Props> = ({
             {errors.status && <Text style={styles.errorText}>{errors.status}</Text>}
 
             {/* Input Hora Estimada */}
-            <Text style={styles.label}>Hora Estimada / Entrega</Text>
+            <Text style={styles.label}>Tiempo de Entrega / Info</Text>
             <TextInput
               style={styles.input}
               value={formData.estimatedTime}
               onChangeText={(text) => updateFormData('estimatedTime', text)}
-              placeholder="ej. 7:30pm"
+              placeholder="ej. 30 min / 7:30 PM"
             />
             {errors.estimatedTime && <Text style={styles.errorText}>{errors.estimatedTime}</Text>}
 
-            {/* Input Comentario (TextArea) */}
-            <Text style={styles.label}>Comentario (Opcional)</Text>
+            {/* Input Comentario */}
+            <Text style={styles.label}>Notas / Razón de cancelación</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={formData.comment}
               onChangeText={(text) => updateFormData('comment', text)}
-              placeholder="Notas internas..."
+              placeholder="Escribe una nota..."
               multiline
               textAlignVertical="top"
-              maxLength={100}
+              maxLength={150}
             />
-            <Text style={styles.charCounter}>{formData.comment.length} / 100</Text>
-            {errors.comment && <Text style={styles.errorText}>{errors.comment}</Text>}
+            <Text style={styles.charCounter}>{formData.comment.length} / 150</Text>
 
-            {/* Botones de Acción (Iconos) */}
+            {/* Botones de Acción */}
             <View style={styles.footerIcons}>
               
-              {/* Botón Completar (Bolsa con check) */}
               <TouchableOpacity style={styles.iconButton} onPress={handleCompleteAction}>
-                 <MaterialCommunityIcons name="shopping-outline" size={32} color={COLORS.text} />
-                 <View style={styles.miniCheckBadge}>
-                    <Ionicons name="checkmark" size={12} color="white" />
-                 </View>
+                 <MaterialCommunityIcons name="check-circle-outline" size={40} color={"#4CAF50"} />
+                 <Text style={styles.iconLabel}>Completar</Text>
               </TouchableOpacity>
 
-              {/* Botón Guardar (Check Verde en Cuadro) */}
               <TouchableOpacity style={styles.iconButton} onPress={handleSave}>
-                <View style={styles.greenCheckBox}>
-                   <Feather name="check" size={28} color="#00C853" />
+                <View style={styles.saveBtnCircle}>
+                   <Feather name="save" size={24} color="white" />
                 </View>
+                <Text style={styles.iconLabel}>Guardar</Text>
               </TouchableOpacity>
 
-              {/* Botón Cancelar (Bolsa Roja con X) */}
               <TouchableOpacity style={styles.iconButton} onPress={handleCancelAction}>
-                 <MaterialCommunityIcons name="shopping-outline" size={32} color="#D50000" />
-                 <View style={styles.miniCancelBadge}>
-                    <Ionicons name="close" size={12} color="white" />
-                 </View>
+                 <MaterialCommunityIcons name="close-circle-outline" size={40} color={COLORS.error || "#F44336"} />
+                 <Text style={styles.iconLabel}>Cancelar</Text>
               </TouchableOpacity>
 
             </View>
@@ -155,7 +148,7 @@ export const OrderActionModal: React.FC<Props> = ({
           </ScrollView>
           
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-             <Ionicons name="close-circle-outline" size={30} color="#ccc" />
+             <Ionicons name="close" size={28} color="#666" />
           </TouchableOpacity>
 
         </View>
@@ -166,125 +159,24 @@ export const OrderActionModal: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center',
   },
   modalContainer: {
-    width: '90%',
-    maxHeight: '90%',
-    backgroundColor: COLORS.white,
-    borderRadius: 25,
-    padding: 20,
-    elevation: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    width: '85%', backgroundColor: COLORS.white, borderRadius: 20, padding: 20, elevation: 10,
   },
-  scrollContent: {
-    alignItems: 'center',
-    paddingBottom: 20,
-  },
-  modalTitle: {
-    fontSize: FONT_SIZES.large,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 5,
-  },
-  headerContent: {
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  productTitle: {
-    fontSize: FONT_SIZES.medium,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: 10,
-  },
-  productImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  label: {
-    alignSelf: 'flex-start',
-    fontSize: FONT_SIZES.small,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 5,
-    marginTop: 10,
-  },
-  input: {
-    width: '100%',
-    height: 45,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    fontSize: FONT_SIZES.medium,
-    color: COLORS.text,
-  },
-  textArea: {
-    height: 80,
-    paddingTop: 10,
-  },
-  charCounter: {
-    fontSize: FONT_SIZES.small,
-    color: COLORS.textSecondary,
-    alignSelf: 'flex-end',
-    marginTop: 5,
-  },
-  errorText: {
-    color: COLORS.error,
-    fontSize: FONT_SIZES.small,
-    alignSelf: 'flex-start',
-    marginTop: 2,
-  },
-  footerIcons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around', 
-    width: '100%',
-    marginTop: 30,
-    paddingHorizontal: 10,
-  },
-  iconButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 60,
-    height: 60,
-  },
-  greenCheckBox: {
-    borderWidth: 2,
-    borderColor: '#00C853',
-    borderRadius: 10,
-    padding: 5,
-  },
-  miniCheckBadge: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    backgroundColor: COLORS.text, 
-    borderRadius: 10,
-    width: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  miniCancelBadge: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    backgroundColor: '#D50000', 
-    borderRadius: 10,
-    width: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-  }
+  scrollContent: { alignItems: 'center', paddingBottom: 10 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
+  
+  label: { alignSelf: 'flex-start', fontSize: 12, fontWeight: 'bold', color: '#555', marginBottom: 5, marginTop: 15 },
+  input: { width: '100%', height: 45, backgroundColor: '#F5F5F5', borderRadius: 8, paddingHorizontal: 15, fontSize: 14, color: COLORS.text, borderWidth: 1, borderColor: '#EEE' },
+  textArea: { height: 80, paddingTop: 10 },
+  charCounter: { fontSize: 10, color: '#999', alignSelf: 'flex-end', marginTop: 2 },
+  errorText: { color: 'red', fontSize: 10, alignSelf: 'flex-start' },
+
+  footerIcons: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 25, paddingHorizontal: 10 },
+  iconButton: { alignItems: 'center', justifyContent: 'center', width: 70 },
+  iconLabel: { fontSize: 10, color: '#555', marginTop: 4 },
+  saveBtnCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 2 },
+  
+  closeButton: { position: 'absolute', top: 10, right: 10, padding: 5 }
 });

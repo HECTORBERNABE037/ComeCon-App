@@ -4,9 +4,9 @@ import { AdminTabParamList, COLORS } from '../../types';
 import { AdminBottomNavBar } from '../components/AdminBottomNavBar';
 
 import HomeAdminScreen from '../screens/home/HomeAdminScreen';
-import { OrderTrackingScreen } from '../screens/admin/OrderTrackingScreen';
-import { AdminProfileScreen } from '../screens/admin/AdminProfileScreen';
+import OrderTrackingScreen  from '../screens/admin/OrderTrackingScreen';
 import { SettingsScreen } from '../screens/common/SettingsScreen';
+import ProfileScreen from '../screens/common/ProfileScreen';
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
 
@@ -23,7 +23,7 @@ export const AdminTabs = () => {
       <Tab.Screen name="HomeAdminTab" component={HomeAdminScreen} />
       <Tab.Screen name="OrderTrackingTab" component={OrderTrackingScreen} />
       <Tab.Screen name="SettingsTab" component={SettingsScreen} />
-      <Tab.Screen name="AdminProfileTab" component={AdminProfileScreen} />
+      <Tab.Screen name="AdminProfileTab" component={ProfileScreen} />
     </Tab.Navigator>
   );
 };

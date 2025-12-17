@@ -10,7 +10,7 @@ interface AuthContextType {
   login: (data: LoginFormData) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   checkSession: () => Promise<void>;
-  refreshUser: () => Promise<void>; // <--- NUEVA FUNCIONALIDAD
+  refreshUser: () => Promise<void>; 
 }
 
 export const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -45,7 +45,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       gender: localUser.gender,
       country: localUser.country,
       image: localUser.image ? { uri: localUser.image } : undefined,
-      // Mapeo de configuraciones (SQLite guarda 1/0, App usa true/false)
       allowNotifications: localUser.allowNotifications === 1,
       allowCamera: localUser.allowCamera === 1
     });
@@ -71,16 +70,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // NUEVO: Refrescar datos desde la nube (Usado en Settings)
+  // Refrescar datos desde la nube (Usado en Settings)
   const refreshUser = async () => {
     if (!user) return;
-    // No ponemos isLoading(true) global para no bloquear toda la UI, 
-    // pero podrías hacerlo si prefieres.
     try {
       console.log("🔄 Refrescando perfil desde la nube...");
-      // 1. Intentar bajar datos frescos del Backend -> SQLite
+      // 1. bajar datos frescos del Backend -> SQLite
       await DataRepository.syncProfile();
-      
       // 2. Recargar desde SQLite (la fuente de verdad)
       const localUser = await DatabaseService.getLocalUser(user.email);
       if (localUser) {
@@ -101,14 +97,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
            await AsyncStorage.setItem('userToken', result.token);
            await AsyncStorage.setItem('userEmail', result.user.email);
         }
-
-        // Al hacer login, los datos frescos ya vienen en result.user o se guardaron en SQLite
-        // Por seguridad, leemos de SQLite para usar el mismo mapeo consistente
+        // Al hacer login, los datos frescos vienen en result.user estan guardados en SQLite
         const localUser = await DatabaseService.getLocalUser(result.user.email);
         if (localUser) {
             mapUserToState(localUser);
         } else {
-            // Fallback si SQLite falló (raro), usamos lo que vino del login
+            // Fallback si SQLite fallo, usamos lo que vino del login
             setUser({
                 id: result.user.id.toString(),
                 nombre: result.user.name || '',
@@ -116,7 +110,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 role: result.user.role as any,
                 nickname: result.user.nickname,
                 phone: result.user.phone,
-                // ... otros campos básicos
                 image: undefined,
                 address: '',
                 gender: '',

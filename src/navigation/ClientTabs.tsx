@@ -5,7 +5,7 @@ import { ClientBottomNavBar } from '../components/ClientBottomNavBar';
 
 import HomeScreen from '../screens/home/HomeScreen';
 import  ClientOrderTrackingScreen  from '../screens/client/ClientOrderTrackingScreen';
-import  ClientProfileScreen  from '../screens/client/ClientProfileScreen';
+import  ProfileScreen  from '../screens/common/ProfileScreen';
 import { SettingsScreen } from '../screens/common/SettingsScreen';
 
 const Tab = createBottomTabNavigator<ClientTabParamList>();
@@ -23,7 +23,7 @@ export const ClientTabs = () => {
       <Tab.Screen name="HomeClientTab" component={HomeScreen} />
       <Tab.Screen name="ClientOrderTrackingTab" component={ClientOrderTrackingScreen} />
       <Tab.Screen name="SettingsTab" component={SettingsScreen} />
-      <Tab.Screen name="ClientProfileTab" component={ClientProfileScreen} />
+      <Tab.Screen name="ClientProfileTab" component={ProfileScreen} />
     </Tab.Navigator>
   );
 };

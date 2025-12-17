@@ -30,10 +30,10 @@ const AddCardScreen: React.FC<Props> = ({ navigation }) => {
       // ENVIAR A DJANGO
       const result = await DataRepository.addCard({
         user: Number(user.id), // Enviamos ID de usuario
-        last_four: formData.number.slice(-4), // Django suele guardar solo últimos 4 por seguridad, o guarda todo encriptado
+        last_four: formData.number.slice(-4), // guardar solo últimos 4 digitos
         holder_name: formData.holderName,
-        expiry_date: formData.expiryDate, // Asegúrate del formato YYYY-MM-DD
-        type: 'visa' // Detectar tipo real si puedes
+        expiry_date: formData.expiryDate, 
+        type: 'visa' 
       });
       
       if (result.success) {
@@ -62,7 +62,7 @@ const AddCardScreen: React.FC<Props> = ({ navigation }) => {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{flex:1}}>
         <ScrollView contentContainerStyle={styles.content}>
           
-          {/* Card Preview Visual */}
+          {/* Card Preview */}
           <View style={styles.cardPreview}>
             <View style={styles.cardChip} />
             <Text style={styles.cardNumberPreview}>

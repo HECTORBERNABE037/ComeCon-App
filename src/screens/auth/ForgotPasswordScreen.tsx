@@ -14,17 +14,14 @@ import {
 import { StackScreenProps } from "@react-navigation/stack";
 import { Ionicons } from '@expo/vector-icons';
 
-// Importaciones internas
 import { ForgotPasswordFormData, COLORS, FONT_SIZES,RootStackParamList } from "../../../types";
 import { useForm } from '../../hooks/useForm';
 import { validateForgotPassword } from '../../utils/validationRules';
 import DatabaseService from '../../services/DatabaseService';
 import { DataRepository } from "../../services/DataRepository";
 
-// Imagen
 const loginImage = require("../../../assets/logoApp.png");
 
-// Tipos de navegación
 type Props = StackScreenProps<RootStackParamList, "ForgotPassword">;
 
 export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
@@ -42,7 +39,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
     setIsLoading(true);
 
     try {
-      // VERIFICACIÓN CON BACKEND (vía DataRepository)
+      // VERIFICACIÓN CON BACKEND 
       const userExists = await DataRepository.checkUserExists(formData.emailOrPhone.trim());
 
       setIsLoading(false);

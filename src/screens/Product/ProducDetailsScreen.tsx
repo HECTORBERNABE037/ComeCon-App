@@ -11,7 +11,6 @@ import { useCart } from '../../context/CartContext';
 
 type Props = StackScreenProps<RootStackParamList, 'ProductDetails'>;
 
-// Reutilizamos el helper de imágenes
 const resolveImage = (imageSource: string | any) => {
   if (!imageSource) return require('../../../assets/logoApp.png');
   if (typeof imageSource === 'string' && (imageSource.startsWith('http') || imageSource.startsWith('file://'))) {
@@ -29,7 +28,7 @@ const resolveImage = (imageSource: string | any) => {
 export const ProductDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { addToCart } = useCart();
 
-  const { platillo } = route.params; // Datos recibidos del Home
+  const { platillo } = route.params; 
   const { user } = useAuth(); 
 
   const activePrice = platillo.promotionalPrice || platillo.price;
@@ -42,7 +41,6 @@ export const ProductDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const [availableSizes, setAvailableSizes] = useState<string[]>([]);
 
   useEffect(() => {
-    // Lógica simple de tallas basada en el nombre (puedes mejorar esto con datos del backend luego)
     if (platillo.title.includes('Cafe') || platillo.title.includes('Bebida')) {
       setAvailableSizes(['M', 'G']); setSelectedSize('M');
     } else if (platillo.title.includes('Bowl') || platillo.title.includes('Ensalada')) {
@@ -60,7 +58,6 @@ export const ProductDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert("Error", "Inicia sesión primero.");
       return;
     }
-    // Usamos el Context para que el badge se actualice solo
     const success = await addToCart(Number(platillo.id), quantity);
     
     if (success) {
@@ -133,7 +130,6 @@ export const ProductDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-// ESTILOS ORIGINALES CONSERVADOS
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F2F2F2' },
   headerCard: { backgroundColor: COLORS.white, paddingTop: Platform.OS === 'android' ? 40 : 20, paddingBottom: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, zIndex: 10 },

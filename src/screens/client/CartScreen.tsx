@@ -14,12 +14,12 @@ import { COLORS, FONT_SIZES } from '../../../types';
 const resolveImage = (imageSource: string | any) => {
   if (!imageSource) return require('../../../assets/logoApp.png');
   if (typeof imageSource === 'string' && imageSource.startsWith('http')) return { uri: imageSource };
-  return require('../../../assets/logoApp.png'); // Simplificado para brevedad
+  return require('../../../assets/logoApp.png'); 
 };
 
 const CartScreen = ({ navigation }: any) => {
   const { user } = useAuth();
-  const { refreshCart } = useCart(); // Para actualizar badge al borrar
+  const { refreshCart } = useCart(); 
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +57,6 @@ const CartScreen = ({ navigation }: any) => {
       );
       return;
     }
-
     // 2. Si hay internet -> Ir a Checkout
     navigation.navigate('Checkout', { 
       items: cartItems, 

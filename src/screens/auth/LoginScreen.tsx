@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { COLORS, FONT_SIZES, RootStackParamList } from "../../../types"; 
-import { AuthContext } from '../../context/AuthContext'; // <--- NUEVO: Usamos Contexto
+import { AuthContext } from '../../context/AuthContext'; 
 
 const loginImage = require("../../../assets/logoApp.png");
 
@@ -27,7 +27,7 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   
-  // LÓGICA NUEVA: Usamos el contexto en lugar de useForm/DatabaseService
+  // Usamos el contexto 
   const { login, isLoading } = useContext(AuthContext);
   
   const [email, setEmail] = useState("");
@@ -61,7 +61,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         </View>
 
         <Text style={styles.title}>ComeCon</Text>
-        <Text style={styles.subtitle}>Tu comida favorita, donde estés</Text>
+        <Text style={styles.subtitle}>Tu comida favorita y saludable</Text>
 
         <View style={styles.formContainer}>
           <TextInput
@@ -71,7 +71,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
-            onChangeText={setEmail} // <--- Conectado a estado simple
+            onChangeText={setEmail} 
           />
 
           <TextInput
@@ -80,7 +80,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             placeholderTextColor={COLORS.textSecondary}
             secureTextEntry
             value={password}
-            onChangeText={setPassword} // <--- Conectado a estado simple
+            onChangeText={setPassword} 
           />
 
           <TouchableOpacity 
@@ -114,7 +114,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   );
 };
 
-// ESTILOS ORIGINALES RESTAURADOS
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
@@ -160,11 +159,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface, 
     borderRadius: 12, 
     paddingHorizontal: 20, 
-    marginBottom: 15, // Ajustado ligeramente para consistencia
+    marginBottom: 15, 
     fontSize: FONT_SIZES.medium, 
     color: COLORS.text,
     borderWidth: 0, 
-    // Sombra sutil en inputs
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,

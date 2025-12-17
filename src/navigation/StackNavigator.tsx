@@ -19,7 +19,7 @@ import { ProductDetailScreen } from "../screens/Product/ProducDetailsScreen";
 import CartScreen from '../screens/client/CartScreen';        
 import CheckoutScreen from '../screens/client/CheckoutScreen'; 
 import AddCardScreen from '../screens/client/AddCardScreen';
-import EditClientProfileScreen from '../screens/client/EditClientProfileScreen';
+import EditProfileScreen from '../screens/common/EditProfileScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -27,37 +27,33 @@ const StackNavigator = () => {
   // 1. ESCUCHAMOS EL ESTADO DEL USUARIO
   const { user, isLoading } = useContext(AuthContext);
 
-  // 2. MIENTRAS CARGA (Splash screen opcional)
+  // 2. MIENTRAS CARGA 
   if (isLoading) {
-    return null; // O un componente <SplashScreen />
+    return null; 
   }
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       
       {user ? (
-        // ==================================================
         //              ZONA PRIVADA (USUARIO LOGUEADO)
-        // ==================================================
         <>
-          {/* Validamos el ROL para mostrar el Home correcto */}
+          {/* Validamos el ROL para mostrar el home correcto */}
           {user.role === 'administrador' ? (
             <Stack.Screen name="AdminRoot" component={AdminTabs} />
           ) : (
             <Stack.Screen name="ClientRoot" component={ClientTabs} />
           )}
 
-          {/* Pantallas compartidas o adicionales que no están en el TabBar pero son parte del stack de navegación */}
+          {/* Pantallas adicionales  */}
           <Stack.Screen name="ProductDetails" component={ProductDetailScreen} />
           <Stack.Screen name="Cart" component={CartScreen} />
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
           <Stack.Screen name="AddCard" component={AddCardScreen} />
-          <Stack.Screen name="EditClientProfile" component={EditClientProfileScreen} />
+          <Stack.Screen name="EditClientProfile" component={EditProfileScreen} />
         </>
       ) : (
-        // ==================================================
         //              ZONA PÚBLICA (NO LOGUEADO)
-        // ==================================================
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />

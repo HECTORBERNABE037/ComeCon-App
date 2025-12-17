@@ -19,7 +19,7 @@ export const SettingsScreen = ({ navigation }: { navigation: any }) => {
     refreshUser();
   }, []);
 
-  // Actualizar switches si el usuario cambia (por el refreshUser)
+  // Actualizar switches si el usuario cambia 
   useEffect(() => {
     if (user) {
       setNotificationsEnabled(!!user.allowNotifications);
@@ -29,17 +29,16 @@ export const SettingsScreen = ({ navigation }: { navigation: any }) => {
 
   const toggleNotifications = async () => {
     const newValue = !notificationsEnabled;
-    setNotificationsEnabled(newValue); // Cambio optimista visual
+    setNotificationsEnabled(newValue); 
     
     setUpdating(true);
-    // Django espera 'allow_notifications' (snake_case)
     const result = await DataRepository.updateSetting({ allow_notifications: newValue });
     setUpdating(false);
 
     if (result.success) {
       await refreshUser(); // Actualizamos el estado global
     } else {
-      setNotificationsEnabled(!newValue); // Revertir si falló
+      setNotificationsEnabled(!newValue);
       Alert.alert("Error", result.error || "No se pudo actualizar. Revisa tu conexión.");
     }
   };
@@ -58,7 +57,6 @@ export const SettingsScreen = ({ navigation }: { navigation: any }) => {
 
     setCameraEnabled(newValue);
     setUpdating(true);
-    // Django espera 'allow_camera'
     const result = await DataRepository.updateSetting({ allow_camera: newValue });
     setUpdating(false);
 

@@ -32,7 +32,6 @@ type HomeScreenNavigationProp = CompositeNavigationProp<
 
 const { width } = Dimensions.get('window');
 
-// Helper de Imágenes
 const resolveImage = (imageSource: string | any) => {
   if (!imageSource) return require('../../../assets/logoApp.png');
   if (typeof imageSource === 'string' && (imageSource.startsWith('http') || imageSource.startsWith('file://'))) {
@@ -54,7 +53,7 @@ const HomeScreen = ({ navigation }: { navigation: HomeScreenNavigationProp }) =>
 
   
   const [products, setProducts] = useState<any[]>([]);
-  const [promotions, setPromotions] = useState<any[]>([]); // Estado para el carrusel
+  const [promotions, setPromotions] = useState<any[]>([]); 
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -63,10 +62,9 @@ const HomeScreen = ({ navigation }: { navigation: HomeScreenNavigationProp }) =>
   const loadData = async () => {
     if (!refreshing) setLoading(true);
     try {
-      // 1. Traer Productos (Esto dispara el sync interno en DataRepository)
+      // 1. Traer Productos sync interno en DataRepository
       const prodData = await DataRepository.getProducts();
-      
-      // 2. Traer Promociones (Desde SQLite, ya que syncProducts las llenó)
+      // 2. Traer Promociones desde SQLite, syncProducts las lleno
       const promoData = await DatabaseService.getPromotionsWithProduct();
 
       setProducts(prodData);
@@ -106,10 +104,8 @@ const HomeScreen = ({ navigation }: { navigation: HomeScreenNavigationProp }) =>
     setFilteredProducts(filtered);
   };
 
-  // Render del Item de Producto (Lista Vertical)
   const renderProductItem = ({ item }: { item: any }) => {
     const imageSource = resolveImage(item.image);
-    // Lógica reactiva: Si promotionalPrice existe y es mayor a 0, hay promo
     const hasPromo = item.promotionalPrice && item.promotionalPrice > 0;
     
     return (
@@ -126,7 +122,7 @@ const HomeScreen = ({ navigation }: { navigation: HomeScreenNavigationProp }) =>
           </Text>
           
           <View style={styles.priceRow}>
-            {/* Si hay promo, mostramos precio viejo tachado */}
+            {/* precio viejo tachado */}
             {hasPromo && (
                <Text style={styles.oldPrice}>${item.price}</Text>
             )}
@@ -143,14 +139,12 @@ const HomeScreen = ({ navigation }: { navigation: HomeScreenNavigationProp }) =>
     );
   };
 
-  // Render del Item de Promoción (Carrusel Horizontal)
   const renderPromoItem = ({ item }: { item: any }) => {
     const imageSource = resolveImage(item.image);
     return (
       <TouchableOpacity 
         style={styles.promoCard}
         activeOpacity={0.9}
-        // NAVEGACIÓN: Pasamos el objeto 'product' que viene dentro de la promo
         onPress={() => navigation.navigate('ProductDetails', { platillo: item.product })}
       >
         <Image source={imageSource} style={styles.promoImage} />
@@ -209,7 +203,7 @@ const HomeScreen = ({ navigation }: { navigation: HomeScreenNavigationProp }) =>
           showsVerticalScrollIndicator={false}
         >
           
-          {/* SECCIÓN DE PROMOCIONES (Solo si existen) */}
+          {/* Solo si existe promocion */}
           {promotions.length > 0 && (
             <View style={styles.promoSection}>
               <Text style={styles.sectionTitle}>Promociones del Día </Text>
@@ -231,7 +225,7 @@ const HomeScreen = ({ navigation }: { navigation: HomeScreenNavigationProp }) =>
                data={filteredProducts}
                keyExtractor={(item) => item.id.toString()}
                renderItem={renderProductItem}
-               scrollEnabled={false} // Scroll delegado al ScrollView padre
+               scrollEnabled={false} 
              />
           </View>
 
@@ -267,10 +261,7 @@ const styles = StyleSheet.create({
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, marginHorizontal: 20, borderRadius: 15, paddingHorizontal: 15, height: 50, marginBottom: 10, elevation: 2 },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: FONT_SIZES.medium, color: COLORS.text },
-
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginLeft: 20, marginBottom: 10, marginTop: 10 },
-  
-  // Estilos Promociones
   promoSection: { marginBottom: 15 },
   promoCard: { 
     width: width * 0.75, height: 140, marginRight: 15, borderRadius: 15, overflow: 'hidden', 
@@ -284,8 +275,6 @@ const styles = StyleSheet.create({
   promoTitle: { color: 'white', fontWeight: 'bold', fontSize: 16, flex: 1, marginRight: 10 },
   priceTagContainer: { backgroundColor: COLORS.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 },
   promoPrice: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-
-  // Estilos Productos
   listSection: { paddingBottom: 20 },
   menuCard: { 
     flexDirection: 'row', backgroundColor: COLORS.white, borderRadius: 18, marginBottom: 15, marginHorizontal: 20,

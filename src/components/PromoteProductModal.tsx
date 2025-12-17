@@ -44,6 +44,7 @@ export const PromoteProductModal: React.FC<Props> = ({ visible, product, onClose
 
         try {
           // Buscamos si existe promo en BD local
+          // Asegúrate de que este método exista y funcione en DatabaseService
           const existingPromo = await DatabaseService.getPromotionByProductId(Number(product.id));
           
           if (existingPromo) {
@@ -55,7 +56,7 @@ export const PromoteProductModal: React.FC<Props> = ({ visible, product, onClose
               endDate: existingPromo.endDate || defaultEndDate
             });
             // Si la columna visible no existe en SQLite promos, asumimos true
-            setIsActive(true); 
+            setIsActive(existingPromo.visible === 1); 
           } else {
             // Es nueva
             setFormData({

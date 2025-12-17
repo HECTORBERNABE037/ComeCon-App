@@ -4,9 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { COLORS } from '../../types';
-import { AuthContext } from '../context/AuthContext'; // Importar AuthContext
+import { AuthContext } from '../context/AuthContext'; 
 
-// ✅ IMPORTANTE: Debe decir 'export const'
 export const ClientBottomNavBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   
   const { logout } = useContext(AuthContext); // Usar logout del contexto
